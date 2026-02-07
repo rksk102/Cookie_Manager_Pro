@@ -123,6 +123,9 @@ function IndexPopup() {
     setTimeout(() => setMessage(prev => ({ ...prev, visible: false })), 3000)
   }
 
+  const showSuccess = (text: string) => showMessage(text, false)
+  const showError = (text: string) => showMessage(text, true)
+
   const addLog = (domain: string, cookieType: CookieClearType, count: number) => {
     const newLog: ClearLogType = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -166,14 +169,12 @@ function IndexPopup() {
       let shouldClear = false
       
       if (isManualClear) {
-        // 手动清理：遵循白名单/黑名单设置
         if (settings.mode === ModeType.WHITELIST) {
           shouldClear = !isInList(cookieDomain, whitelist)
         } else if (settings.mode === ModeType.BLACKLIST) {
           shouldClear = isInList(cookieDomain, blacklist)
         }
       } else {
-        // 自动清理：遵循白名单/黑名单设置
         if (settings.mode === ModeType.WHITELIST) {
           shouldClear = !isInList(cookieDomain, whitelist)
         } else if (settings.mode === ModeType.BLACKLIST) {
@@ -233,7 +234,6 @@ function IndexPopup() {
         const url = new URL(tab.url)
         const domain = url.hostname
         
-        // 检查是否应该清理（遵循白名单/黑名单设置）
         if (settings.mode === ModeType.WHITELIST && isInList(domain, whitelist)) {
           return
         }
@@ -352,12 +352,20 @@ function IndexPopup() {
       </header>
 
       <div className="tabs">
-        {["manage", settings.mode === ModeType.WHITELIST ? "whitelist" : "blacklist", "settings", "log"].map(tab => (
+        {[
+          { id: "manage", label: "管理", icon: "🏠" },
+          { id: settings.mode === ModeType.WHITELIST ? "whitelist" : "blacklist", 
+            label: settings.mode === ModeType.WHITELIST ? "白名单" : "黑名单", 
+            icon: "📝" },
+          { id: "settings", label: "设置", icon: "⚙️" },
+          { id: "log", label: "日志", icon: "📋" }
+        ].map(tab => (
           <button
-            key={tab}
-            className={`tab-btn ${activeTab === tab ? "active" : ""}`}
-            onClick={() => setActiveTab(tab)}>
-            {tab === "manage" ? "管理" : tab === "whitelist" ? "白名单" : tab === "blacklist" ? "黑名单" : tab === "settings" ? "设置" : "日志"}
+            key={tab.id}
+            className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
+            onClick={() => setActiveTab(tab.id)}>
+            <span className="tab-icon">{tab.icon}</span>
+            <span>{tab.label}</span>
           </button>
         ))}
       </div>
@@ -365,46 +373,46 @@ function IndexPopup() {
       {activeTab === "manage" && (
         <div className="tab-content">
           <div className="section">
-            <h3>当前网站</h3>
+            <h3><span className="section-icon">🌐</span>当前网站</h3>
             <div className="domain-info">{currentDomain || "无法获取域名"}</div>
           </div>
 
           <div className="section">
-            <h3>Cookie统计</h3>
+            <h3><span className="section-icon">📊</span>Cookie统计</h3>
             <div className="stats">
               <div className="stat-item">
-                <span className="stat-label">总数:</span>
+                <span className="stat-label">总数</span>
                 <span className="stat-value">{stats.total}</span>
               </div>
               <div className="stat-item">
-                <span className="stat-label">当前网站:</span>
+                <span className="stat-label">当前网站</span>
                 <span className="stat-value">{stats.current}</span>
               </div>
               <div className="stat-item">
-                <span className="stat-label">会话:</span>
+                <span className="stat-label">会话</span>
                 <span className="stat-value">{stats.session}</span>
               </div>
               <div className="stat-item">
-                <span className="stat-label">持久:</span>
+                <span className="stat-label">持久</span>
                 <span className="stat-value">{stats.persistent}</span>
               </div>
             </div>
           </div>
 
           <div className="section">
-            <h3>快速操作</h3>
+            <h3><span className="section-icon">⚡</span>快速操作</h3>
             <div className="button-group">
-              <button onClick={quickAddToWhitelist} className="btn btn-primary">
-                添加到白名单
+              <button onClick={quickAddToWhitelist} className="btn btn-success">
+                <span className="btn-icon">✓</span>添加到白名单
               </button>
               <button onClick={quickAddToBlacklist} className="btn btn-secondary">
-                添加到黑名单
+                <span className="btn-icon">✗</span>添加到黑名单
               </button>
               <button onClick={quickClearCurrent} className="btn btn-warning">
-                清除当前网站
+                <span className="btn-icon">🧹</span>清除当前网站
               </button>
               <button onClick={quickClearAll} className="btn btn-danger">
-                清除所有Cookie
+                <span className="btn-icon">🔥</span>清除所有Cookie
               </button>
             </div>
           </div>
@@ -445,11 +453,9 @@ function IndexPopup() {
         </div>
       )}
 
-      {message.visible && (
-        <div className={`message ${message.isError ? "error" : ""}`}>
-          {message.text}
-        </div>
-      )}
+      <div className={`message ${message.isError ? "error" : ""} ${message.visible ? "visible" : ""}`}>
+        {message.text}
+      </div>
     </div>
   )
 }

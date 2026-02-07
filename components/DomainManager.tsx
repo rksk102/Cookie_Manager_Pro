@@ -58,7 +58,6 @@ export const DomainManager = ({ type, currentDomain, onMessage }: Props) => {
       {type === "blacklist" && (
         <button 
           onClick={() => {
-            // 这里需要调用清除黑名单的逻辑，可以通过 props 传递或使用自定义事件
             const event = new CustomEvent('clear-blacklist');
             window.dispatchEvent(event);
           }}
