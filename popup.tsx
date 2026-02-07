@@ -214,6 +214,40 @@ function IndexPopup() {
       }
     }
 
+    if (settings.clearLocalStorage && clearedDomains.size > 0) {
+      try {
+        const origins: string[] = []
+        clearedDomains.forEach(d => {
+          origins.push(`http://${d}`, `https://${d}`)
+        })
+        await chrome.browsingData.remove(
+          { origins },
+          {
+            localStorage: true
+          }
+        )
+      } catch (e) {
+        console.error("Failed to clear localStorage:", e)
+      }
+    }
+
+    if (settings.clearIndexedDB && clearedDomains.size > 0) {
+      try {
+        const origins: string[] = []
+        clearedDomains.forEach(d => {
+          origins.push(`http://${d}`, `https://${d}`)
+        })
+        await chrome.browsingData.remove(
+          { origins },
+          {
+            indexedDB: true
+          }
+        )
+      } catch (e) {
+        console.error("Failed to clear IndexedDB:", e)
+      }
+    }
+
     showMessage(`${successMsg} ${count} 个Cookie`)
     updateStats()
   }

@@ -18,7 +18,7 @@ chrome.runtime.onInstalled.addListener(async () => {
   }
 })
 
-const performCleanup = async (domain: string, options?: { clearType?: CookieClearType, clearCache?: boolean }) => {
+const performCleanup = async (domain: string, options?: { clearType?: CookieClearType, clearCache?: boolean, clearLocalStorage?: boolean, clearIndexedDB?: boolean }) => {
   const settings = await storage.get<Settings>(SETTINGS_KEY)
   if (!settings) return
 
@@ -27,6 +27,8 @@ const performCleanup = async (domain: string, options?: { clearType?: CookieClea
 
   const clearType = options?.clearType ?? settings.clearType
   const shouldClearCache = options?.clearCache ?? settings.clearCache
+  const shouldClearLocalStorage = options?.clearLocalStorage ?? settings.clearLocalStorage
+  const shouldClearIndexedDB = options?.clearIndexedDB ?? settings.clearIndexedDB
 
   let shouldCleanup = false
   
@@ -72,6 +74,40 @@ const performCleanup = async (domain: string, options?: { clearType?: CookieClea
       )
     } catch (e) {
       console.error("Failed to clear cache:", e)
+    }
+  }
+
+  if (shouldClearLocalStorage && clearedDomains.size > 0) {
+    try {
+      const origins: string[] = []
+      clearedDomains.forEach(d => {
+        origins.push(`http://${d}`, `https://${d}`)
+      })
+      await chrome.browsingData.remove(
+        { origins },
+        {
+          localStorage: true
+        }
+      )
+    } catch (e) {
+      console.error("Failed to clear localStorage:", e)
+    }
+  }
+
+  if (shouldClearIndexedDB && clearedDomains.size > 0) {
+    try {
+      const origins: string[] = []
+      clearedDomains.forEach(d => {
+        origins.push(`http://${d}`, `https://${d}`)
+      })
+      await chrome.browsingData.remove(
+        { origins },
+        {
+          indexedDB: true
+        }
+      )
+    } catch (e) {
+      console.error("Failed to clear IndexedDB:", e)
     }
   }
 
