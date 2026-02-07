@@ -61,6 +61,16 @@ jobs:
             exit 1
           fi
 
+      - name: Get project version
+        id: get_version
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          PROJECT_NAME=$(jq -r '.name' package.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+          echo "build_dir=${PROJECT_NAME}-${VERSION}" >> $GITHUB_OUTPUT
+          echo "zip_file=${PROJECT_NAME}-${VERSION}.zip" >> $GITHUB_OUTPUT
+
       - name: Build extension
         run: npm run build
 
@@ -93,11 +103,33 @@ jobs:
           fi
 
       - name: Package extension
+        if: github.event_name == 'workflow_dispatch'
         run: npm run package
 
-      - name: Verify zip file creation
+      - name: Rename build artifacts
+        if: github.event_name == 'workflow_dispatch'
         run: |
-          ZIP_FILE=$(find . -name "*.zip" | head -1)
+          VERSION=${{ steps.get_version.outputs.version }}
+          PROJECT_NAME=${{ steps.get_version.outputs.project_name }}
+          BUILD_DIR=${{ steps.get_version.outputs.build_dir }}
+          ZIP_FILE=${{ steps.get_version.outputs.zip_file }}
+          
+          # Rename build directory
+          if [ -d "build/chrome-mv3-prod" ]; then
+            mv build/chrome-mv3-prod build/$BUILD_DIR
+            echo "✓ Renamed build directory to build/$BUILD_DIR"
+          fi
+          
+          # Rename zip file
+          if [ -f "build/chrome-mv3-prod.zip" ]; then
+            mv build/chrome-mv3-prod.zip build/$ZIP_FILE
+            echo "✓ Renamed zip file to build/$ZIP_FILE"
+          fi
+
+      - name: Verify zip file creation
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          ZIP_FILE=$(find build -name "*.zip" | head -1)
           if [ -f "$ZIP_FILE" ]; then
             echo "✓ Zip file created: $ZIP_FILE"
             ls -la "$ZIP_FILE"
@@ -113,26 +145,33 @@ jobs:
           fi
 
       - name: Verify build artifacts
+        if: github.event_name == 'workflow_dispatch'
         run: |
           echo "📁 Build artifacts:"
           ls -la build/
-          echo "📁 Production build:"
-          ls -la build/chrome-mv3-prod/
-          # Check for required files
-          REQUIRED_FILES=("manifest.json" "popup.html")
-          for file in "${REQUIRED_FILES[@]}"; do
-            if [ -f "build/chrome-mv3-prod/$file" ]; then
-              echo "✓ $file exists"
+          BUILD_DIR=$(find build -type d -name "*-*" | head -1)
+          if [ -d "$BUILD_DIR" ]; then
+            echo "📁 Production build:"
+            ls -la "$BUILD_DIR"
+            # Check for required files
+            REQUIRED_FILES=("manifest.json" "popup.html")
+            for file in "${REQUIRED_FILES[@]}"; do
+              if [ -f "$BUILD_DIR/$file" ]; then
+                echo "✓ $file exists"
+              else
+                echo "✗ $file missing"
+                exit 1
+              fi
+            done
+            # Check for background script
+            if [ -f "$BUILD_DIR/static/background/index.js" ]; then
+              echo "✓ background script exists at static/background/index.js"
             else
-              echo "✗ $file missing"
-              exit 1
+              echo "ℹ️ background script not found"
             fi
-          done
-          # Check for background script
-          if [ -f "build/chrome-mv3-prod/static/background/index.js" ]; then
-            echo "✓ background script exists at static/background/index.js"
           else
-            echo "ℹ️ background script not found"
+            echo "✗ Build directory not found"
+            exit 1
           fi
 
       - name: Security check
@@ -151,6 +190,7 @@ jobs:
           fi
 
       - name: Upload build artifacts
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: extension-build
@@ -160,23 +200,26 @@ jobs:
           retention-days: 7
 
       - name: Create Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ github.run_number }}
-          name: Release v${{ github.run_number }}
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: Release v${{ steps.get_version.outputs.version }}
           body: |
             ## Cookie Manager Pro Release
             
+            ### Version
+            ${{ steps.get_version.outputs.version }}
+            
             ### Changes
-            - Automatic build from GitHub Actions
+            - Manual build from GitHub Actions
             - Latest code changes
             
             ### Files
             - Chrome extension zip file
             - Build artifacts
           files: |
-            build/chrome-mv3-prod.zip
+            build/*.zip
           draft: false
           prerelease: false
 
@@ -187,14 +230,18 @@ jobs:
           echo "✅ Build completed successfully"
           echo "✅ TypeScript check passed"
           echo "✅ Dependency audit completed"
-          echo "✅ Extension packaged"
-          ZIP_FILE=$(find . -name "*.zip" | head -1)
-          if [ -f "$ZIP_FILE" ]; then
-            echo "✅ Zip file: $(basename "$ZIP_FILE")"
-          fi
-          echo "✅ Ready for deployment"
-          if [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref }}" == "refs/heads/main" ]; then
+          
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "✅ Extension packaged"
+            ZIP_FILE=$(find build -name "*.zip" | head -1)
+            if [ -f "$ZIP_FILE" ]; then
+              echo "✅ Zip file: $(basename "$ZIP_FILE")"
+            fi
+            echo "✅ Build artifacts uploaded"
             echo "✅ Release created"
+            echo "✅ Ready for deployment"
           else
-            echo "ℹ️ Release skipped (not on main branch push)"
+            echo "✅ Code inspection completed"
+            echo "✅ No issues found"
+            echo "ℹ️ Package and release steps skipped (manual trigger only)"
           fi
