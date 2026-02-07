@@ -66,7 +66,7 @@ const performCleanup = async (domain: string) => {
 
   if (settings.clearCache) {
     await chrome.browsingData.remove(
-      { origins: [url] },
+      { origins: [`http://${domain}`] },
       {
         cacheStorage: true,
         fileSystems: true,
