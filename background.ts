@@ -2,8 +2,7 @@ import { Storage } from "@plasmohq/storage"
 import { WHITELIST_KEY, BLACKLIST_KEY, SETTINGS_KEY } from "~store"
 import type { Settings } from "~types"
 import { ModeType, CookieClearType, isInList, isDomainMatch } from "~types"
-import { clearBrowserData, type ClearBrowserDataOptions } from "~utils"
-import { cleanDomain } from "~utils/domain"
+import { clearBrowserData, clearCookies, type ClearBrowserDataOptions } from "~utils"
 
 const storage = new Storage()
 
@@ -21,15 +20,12 @@ chrome.runtime.onInstalled.addListener(async () => {
 })
 
 const performCleanup = async (domain: string, options?: { clearType?: CookieClearType, clearCache?: boolean, clearLocalStorage?: boolean, clearIndexedDB?: boolean }) => {
-  // 获取设置
   const settings = await storage.get<Settings>(SETTINGS_KEY)
   if (!settings) return
 
-  // 获取白名单和黑名单
   const whitelist = await storage.get<string[]>(WHITELIST_KEY) || []
   const blacklist = await storage.get<string[]>(BLACKLIST_KEY) || []
 
-  // 处理清理选项
   const clearType = options?.clearType ?? settings.clearType
   const clearOptions: ClearBrowserDataOptions = {
     clearCache: options?.clearCache ?? settings.clearCache,
@@ -37,7 +33,6 @@ const performCleanup = async (domain: string, options?: { clearType?: CookieClea
     clearIndexedDB: options?.clearIndexedDB ?? settings.clearIndexedDB
   }
 
-  // 检查是否应该清理
   let shouldCleanup = false
   
   if (settings.mode === ModeType.WHITELIST) {
@@ -48,31 +43,14 @@ const performCleanup = async (domain: string, options?: { clearType?: CookieClea
   
   if (!shouldCleanup) return
 
-  // 清理 Cookie
-  const cookies = await chrome.cookies.getAll({})
-  let count = 0
-  const clearedDomains = new Set<string>()
+  const result = await clearCookies({
+    filterFn: (cookieDomain) => isDomainMatch(cookieDomain, domain),
+    clearType
+  })
 
-  for (const cookie of cookies) {
-    if (!isDomainMatch(cookie.domain, domain)) continue
+  await clearBrowserData(result.clearedDomains, clearOptions)
 
-    // 检查清理类型
-    const isSession = !cookie.expirationDate
-    if (clearType === CookieClearType.SESSION && !isSession) continue
-    if (clearType === CookieClearType.PERSISTENT && isSession) continue
-
-    // 清理 Cookie
-    const cleanedDomain = cleanDomain(cookie.domain)
-    const url = `http${cookie.secure ? 's' : ''}://${cleanedDomain}${cookie.path}`
-    await chrome.cookies.remove({ url, name: cookie.name })
-    count++
-    clearedDomains.add(cleanedDomain)
-  }
-
-  // 清理浏览器数据
-  await clearBrowserData(clearedDomains, clearOptions)
-
-  return { count, clearedDomains: Array.from(clearedDomains) }
+  return { count: result.count, clearedDomains: Array.from(result.clearedDomains) }
 }
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {

@@ -7,8 +7,7 @@ import { CookieList } from "~components/CookieList"
 import { WHITELIST_KEY, BLACKLIST_KEY, SETTINGS_KEY, CLEAR_LOG_KEY, DEFAULT_SETTINGS, LOG_RETENTION_MAP } from "~store"
 import type { DomainList, CookieStats, Settings as SettingsType, ClearLog as ClearLogType, Cookie } from "~types"
 import { CookieClearType, ThemeMode, LogRetention, ModeType, isDomainMatch, isInList } from "~types"
-import { clearBrowserData, type ClearBrowserDataOptions } from "~utils"
-import { cleanDomain } from "~utils/domain"
+import { clearBrowserData, clearCookies as clearCookiesUtil, type ClearBrowserDataOptions } from "~utils"
 import "./style.css"
 
 function IndexPopup() {
@@ -152,44 +151,25 @@ function IndexPopup() {
   const clearCookies = async (filterFn: (domain: string) => boolean, successMsg: string, logType: CookieClearType) => {
     setLoading(true)
     try {
-      // 获取所有 Cookie
-      const cookies = await chrome.cookies.getAll({})
       let count = 0
       let clearedDomains = new Set<string>()
 
-      for (const cookie of cookies) {
-        try {
-          const cookieDomain = cleanDomain(cookie.domain)
-          if (!filterFn(cookieDomain)) continue
-
-          // 检查是否应该清理
-          let shouldClear = false
-          if (settings.mode === ModeType.WHITELIST) {
-            shouldClear = !isInList(cookieDomain, whitelist)
-          } else if (settings.mode === ModeType.BLACKLIST) {
-            shouldClear = isInList(cookieDomain, blacklist)
-          }
-          
-          if (!shouldClear) continue
-
-          // 检查清理类型
-          const isSession = !cookie.expirationDate
-          if (logType === CookieClearType.ALL || 
-              (logType === CookieClearType.SESSION && isSession) ||
-              (logType === CookieClearType.PERSISTENT && !isSession)) {
-            
-            const cleanedDomain = cleanDomain(cookie.domain)
-            const url = `http${cookie.secure ? 's' : ''}://${cleanedDomain}${cookie.path}`
-            await chrome.cookies.remove({ url, name: cookie.name })
-            count++
-            clearedDomains.add(cookieDomain)
-          }
-        } catch (e) {
-          console.error(`Failed to clear cookie ${cookie.name}:`, e)
-        }
+      if (settings.mode === ModeType.WHITELIST) {
+        const result = await clearCookiesUtil({
+          filterFn: (domain) => filterFn(domain) && !isInList(domain, whitelist),
+          clearType: logType
+        })
+        count = result.count
+        clearedDomains = result.clearedDomains
+      } else if (settings.mode === ModeType.BLACKLIST) {
+        const result = await clearCookiesUtil({
+          filterFn: (domain) => filterFn(domain) && isInList(domain, blacklist),
+          clearType: logType
+        })
+        count = result.count
+        clearedDomains = result.clearedDomains
       }
 
-      // 添加清理日志
       if (count > 0) {
         const domainStr = clearedDomains.size === 1 ? Array.from(clearedDomains)[0] : 
                          clearedDomains.size > 1 ? `${Array.from(clearedDomains)[0]} 等${clearedDomains.size}个域名` : 
@@ -197,7 +177,6 @@ function IndexPopup() {
         addLog(domainStr, logType, count)
       }
 
-      // 清理浏览器数据
       try {
         await clearBrowserData(clearedDomains, {
           clearCache: settings.clearCache,
@@ -206,12 +185,9 @@ function IndexPopup() {
         })
       } catch (e) {
         console.error("Failed to clear browser data:", e)
-        // 继续执行，不影响主流程
       }
 
-      // 显示成功消息
       showMessage(`${successMsg} ${count} 个Cookie`)
-      // 更新统计信息
       await updateStats()
     } catch (e) {
       console.error("Failed to clear cookies:", e)
@@ -230,7 +206,6 @@ function IndexPopup() {
           const url = new URL(tab.url)
           const domain = url.hostname
           
-          // 检查是否在白名单或不在黑名单
           if (settings.mode === ModeType.WHITELIST && isInList(domain, whitelist)) {
             return
           }
@@ -238,42 +213,21 @@ function IndexPopup() {
             return
           }
           
-          // 清理 Cookie
-          const cookies = await chrome.cookies.getAll({})
-          let count = 0
-          let clearedDomains = new Set<string>()
-          
-          for (const cookie of cookies) {
-            try {
-              if (!isDomainMatch(cookie.domain, domain)) continue
+          const result = await clearCookiesUtil({
+            filterFn: (cookieDomain) => isDomainMatch(cookieDomain, domain),
+            clearType: settings.clearType
+          })
 
-              // 检查清理类型
-              const isSession = !cookie.expirationDate
-              if (settings.clearType === CookieClearType.SESSION && !isSession) continue
-              if (settings.clearType === CookieClearType.PERSISTENT && isSession) continue
-
-              const cleanedDomain = cleanDomain(cookie.domain)
-            const url = `http${cookie.secure ? 's' : ''}://${cleanedDomain}${cookie.path}`
-            await chrome.cookies.remove({ url, name: cookie.name })
-            count++
-            clearedDomains.add(cleanedDomain)
-            } catch (e) {
-              console.error(`Failed to clear cookie ${cookie.name}:`, e)
-            }
-          }
-
-          // 清理缓存
           try {
-            await clearBrowserData(clearedDomains, {
+            await clearBrowserData(result.clearedDomains, {
               clearCache: settings.clearCache
             })
           } catch (e) {
             console.error("Failed to clear cache:", e)
           }
 
-          // 添加清理日志
-          if (count > 0) {
-            addLog("启动清理", settings.clearType, count)
+          if (result.count > 0) {
+            addLog("启动清理", settings.clearType, result.count)
           }
         } catch (e) {
           console.error("Failed to cleanup on startup:", e)
@@ -449,27 +403,17 @@ function IndexPopup() {
             currentDomain={currentDomain}
             onMessage={showMessage}
             onClearBlacklist={async () => {
-              const cookies = await chrome.cookies.getAll({})
-              let count = 0
-              let clearedDomains = new Set<string>()
-
-              for (const cookie of cookies) {
-                const cookieDomain = cleanDomain(cookie.domain)
-                if (isInList(cookieDomain, blacklist)) {
-                  const cleanedDomain = cleanDomain(cookie.domain)
-                  const url = `http${cookie.secure ? 's' : ''}://${cleanedDomain}${cookie.path}`
-                  await chrome.cookies.remove({ url, name: cookie.name })
-                  count++
-                  clearedDomains.add(cookieDomain)
-                }
-              }
-
-              if (count > 0) {
-                const domainStr = clearedDomains.size === 1 ? Array.from(clearedDomains)[0] :
-                                 clearedDomains.size > 1 ? `${Array.from(clearedDomains)[0]} 等${clearedDomains.size}个域名` :
+              const result = await clearCookiesUtil({
+                filterFn: (domain) => isInList(domain, blacklist),
+                clearType: CookieClearType.ALL
+              })
+              
+              if (result.count > 0) {
+                const domainStr = result.clearedDomains.size === 1 ? Array.from(result.clearedDomains)[0] :
+                                 result.clearedDomains.size > 1 ? `${Array.from(result.clearedDomains)[0]} 等${result.clearedDomains.size}个域名` :
                                  "黑名单网站"
-                addLog(domainStr, CookieClearType.ALL, count)
-                showMessage(`已清除黑名单网站的 ${count} 个Cookie`)
+                addLog(domainStr, CookieClearType.ALL, result.count)
+                showMessage(`已清除黑名单网站的 ${result.count} 个Cookie`)
                 updateStats()
               } else {
                 showMessage("黑名单网站暂无Cookie可清除")
