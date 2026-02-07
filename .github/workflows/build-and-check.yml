@@ -154,6 +154,27 @@ jobs:
             *.zip
           retention-days: 7
 
+      - name: Create Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Release v${{ github.run_number }}
+          body: |
+            ## Cookie Manager Pro Release
+            
+            ### Changes
+            - Automatic build from GitHub Actions
+            - Latest code changes
+            
+            ### Files
+            - Chrome extension zip file
+            - Build artifacts
+          files: |
+            build/chrome-mv3-prod.zip
+          draft: false
+          prerelease: false
+
       - name: Summary
         run: |
           echo "## Build Summary"
@@ -167,3 +188,8 @@ jobs:
             echo "✅ Zip file: $(basename "$ZIP_FILE")"
           fi
           echo "✅ Ready for deployment"
+          if [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "✅ Release created"
+          else
+            echo "ℹ️ Release skipped (not on main branch push)"
+          fi
