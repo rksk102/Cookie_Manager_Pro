@@ -78,11 +78,6 @@ const performCleanup = async (domain: string, options?: { clearType?: CookieClea
   return { count, clearedDomains: Array.from(clearedDomains) }
 }
 
-chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
-  const settings = await storage.get<Settings>(SETTINGS_KEY)
-  if (!settings?.enableAutoCleanup || !settings?.cleanupOnTabDiscard) return
-})
-
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   const settings = await storage.get<Settings>(SETTINGS_KEY)
   if (!settings?.enableAutoCleanup || !settings?.cleanupOnTabDiscard) return

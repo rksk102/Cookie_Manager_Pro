@@ -33,11 +33,7 @@
     "host_permissions": [
       "https://*/*",
       "http://*/*"
-    ],
-    "action": {
-      "default_title": "Cookie Manager Pro",
-      "default_popup": "popup.html"
-    }
+    ]
   },
   "plasmo": {
     "assets": [

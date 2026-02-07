@@ -157,7 +157,7 @@ function IndexPopup() {
     setLogs([newLog, ...filteredLogs])
   }
 
-  const clearCookies = async (filterFn: (domain: string) => boolean, successMsg: string, logType: CookieClearType, isManualClear: boolean = false) => {
+  const clearCookies = async (filterFn: (domain: string) => boolean, successMsg: string, logType: CookieClearType) => {
     const cookies = await chrome.cookies.getAll({})
     let count = 0
     let clearedDomains = new Set<string>()
@@ -167,19 +167,10 @@ function IndexPopup() {
       if (!filterFn(cookieDomain)) continue
 
       let shouldClear = false
-      
-      if (isManualClear) {
-        if (settings.mode === ModeType.WHITELIST) {
-          shouldClear = !isInList(cookieDomain, whitelist)
-        } else if (settings.mode === ModeType.BLACKLIST) {
-          shouldClear = isInList(cookieDomain, blacklist)
-        }
-      } else {
-        if (settings.mode === ModeType.WHITELIST) {
-          shouldClear = !isInList(cookieDomain, whitelist)
-        } else if (settings.mode === ModeType.BLACKLIST) {
-          shouldClear = isInList(cookieDomain, blacklist)
-        }
+      if (settings.mode === ModeType.WHITELIST) {
+        shouldClear = !isInList(cookieDomain, whitelist)
+      } else if (settings.mode === ModeType.BLACKLIST) {
+        shouldClear = isInList(cookieDomain, blacklist)
       }
       
       if (!shouldClear) continue
@@ -333,15 +324,14 @@ function IndexPopup() {
       clearCookies(
         d => isDomainMatch(d, currentDomain),
         `已清除 ${currentDomain}`,
-        settings.clearType,
-        true
+        settings.clearType
       )
     }
   }
 
   const quickClearAll = () => {
     if (confirm("确定要清除所有Cookie吗？（白名单除外）")) {
-      clearCookies(() => true, "已清除所有网站", settings.clearType, true)
+      clearCookies(() => true, "已清除所有网站", settings.clearType)
     }
   }
 
