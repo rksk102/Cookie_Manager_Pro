@@ -1,0 +1,31 @@
+name: Plasmo Extension Lint
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm' # 自动缓存依赖，加快速度
+
+      - name: Install dependencies
+        run: npm install # 或者用 pnpm install, yarn install
+
+      - name: Plasmo Build
+        # 编译出 Chrome 生产版本产物
+        run: npx plasmo build --target=chrome-mv3
+
+      - name: Run web-ext lint
+        run: |
+          # Plasmo 编译后的产物默认在 build/chrome-mv3-prod 文件夹
+          npx web-ext lint --source-dir ./build/chrome-mv3-prod --self-hosted
