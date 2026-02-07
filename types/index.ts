@@ -5,6 +5,20 @@ export interface StorageData {
   blacklist: DomainList;
 }
 
+export type SameSite = 'strict' | 'lax' | 'none' | 'unspecified' | 'no_restriction'
+
+export interface Cookie {
+  name: string;
+  value: string;
+  domain: string;
+  path: string;
+  secure: boolean;
+  httpOnly: boolean;
+  sameSite: SameSite;
+  expirationDate?: number;
+  storeId?: string;
+}
+
 export const normalizeDomain = (domain: string): string => {
   return domain.replace(/^\./, '').toLowerCase();
 };
@@ -30,23 +44,22 @@ export const isInList = (domain: string, list: string[]): boolean => {
   });
 };
 
+export const getCookieTypeName = (type: string): string => {
+  switch (type) {
+    case 'session':
+      return '会话Cookie';
+    case 'persistent':
+      return '持久Cookie';
+    default:
+      return '所有Cookie';
+  }
+};
+
 export interface CookieStats {
   total: number;
   current: number;
   session: number;
   persistent: number;
-}
-
-export interface Cookie {
-  name: string;
-  value: string;
-  domain: string;
-  path: string;
-  secure: boolean;
-  httpOnly: boolean;
-  sameSite: string;
-  expirationDate?: number;
-  storeId?: string;
 }
 
 export enum CookieClearType {

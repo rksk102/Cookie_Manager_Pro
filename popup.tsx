@@ -8,6 +8,7 @@ import { WHITELIST_KEY, BLACKLIST_KEY, SETTINGS_KEY, CLEAR_LOG_KEY, DEFAULT_SETT
 import type { DomainList, CookieStats, Settings as SettingsType, ClearLog as ClearLogType, Cookie } from "~types"
 import { CookieClearType, ThemeMode, LogRetention, ModeType, isDomainMatch, isInList } from "~types"
 import { clearBrowserData, type ClearBrowserDataOptions } from "~utils"
+import { cleanDomain } from "~utils/domain"
 import "./style.css"
 
 function IndexPopup() {
@@ -102,8 +103,17 @@ function IndexPopup() {
         session: sessionCookies.length,
         persistent: persistentCookies.length
       })
-      // 更新当前 Cookie 列表
-      setCurrentCookies(currentCookiesList)
+      setCurrentCookies(currentCookiesList.map(c => ({
+        name: c.name,
+        value: c.value,
+        domain: c.domain,
+        path: c.path,
+        secure: c.secure,
+        httpOnly: c.httpOnly,
+        sameSite: c.sameSite,
+        expirationDate: c.expirationDate,
+        storeId: c.storeId
+      })))
     } catch (e) {
       console.error("Failed to update stats:", e)
       showMessage("更新统计信息失败", true)
@@ -149,8 +159,7 @@ function IndexPopup() {
 
       for (const cookie of cookies) {
         try {
-          // 处理每个 Cookie
-          const cookieDomain = cookie.domain.replace(/^\./, '')
+          const cookieDomain = cleanDomain(cookie.domain)
           if (!filterFn(cookieDomain)) continue
 
           // 检查是否应该清理
@@ -169,9 +178,8 @@ function IndexPopup() {
               (logType === CookieClearType.SESSION && isSession) ||
               (logType === CookieClearType.PERSISTENT && !isSession)) {
             
-            // 清理 Cookie
-            const cleanDomain = cookie.domain.replace(/^\./, '')
-            const url = `http${cookie.secure ? 's' : ''}://${cleanDomain}${cookie.path}`
+            const cleanedDomain = cleanDomain(cookie.domain)
+            const url = `http${cookie.secure ? 's' : ''}://${cleanedDomain}${cookie.path}`
             await chrome.cookies.remove({ url, name: cookie.name })
             count++
             clearedDomains.add(cookieDomain)
@@ -244,12 +252,11 @@ function IndexPopup() {
               if (settings.clearType === CookieClearType.SESSION && !isSession) continue
               if (settings.clearType === CookieClearType.PERSISTENT && isSession) continue
 
-              // 清理 Cookie
-              const cleanDomain = cookie.domain.replace(/^\./, '')
-              const cookieUrl = `http${cookie.secure ? 's' : ''}://${cleanDomain}${cookie.path}`
-              await chrome.cookies.remove({ url: cookieUrl, name: cookie.name })
-              count++
-              clearedDomains.add(cleanDomain)
+              const cleanedDomain = cleanDomain(cookie.domain)
+            const url = `http${cookie.secure ? 's' : ''}://${cleanedDomain}${cookie.path}`
+            await chrome.cookies.remove({ url, name: cookie.name })
+            count++
+            clearedDomains.add(cleanedDomain)
             } catch (e) {
               console.error(`Failed to clear cookie ${cookie.name}:`, e)
             }

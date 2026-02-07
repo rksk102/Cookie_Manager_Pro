@@ -1,3 +1,5 @@
+import { buildOrigins } from "~utils/domain"
+
 export interface ClearBrowserDataOptions {
   clearCache?: boolean;
   clearLocalStorage?: boolean;
@@ -9,10 +11,7 @@ export const clearBrowserData = async (domains: Set<string>, options: ClearBrows
 
   if (clearCache && domains.size > 0) {
     try {
-      const origins: string[] = []
-      domains.forEach(d => {
-        origins.push(`http://${d}`, `https://${d}`)
-      })
+      const origins = buildOrigins(domains)
       await chrome.browsingData.remove(
         { origins },
         {
@@ -28,10 +27,7 @@ export const clearBrowserData = async (domains: Set<string>, options: ClearBrows
 
   if (clearLocalStorage && domains.size > 0) {
     try {
-      const origins: string[] = []
-      domains.forEach(d => {
-        origins.push(`http://${d}`, `https://${d}`)
-      })
+      const origins = buildOrigins(domains)
       await chrome.browsingData.remove(
         { origins },
         {
@@ -45,10 +41,7 @@ export const clearBrowserData = async (domains: Set<string>, options: ClearBrows
 
   if (clearIndexedDB && domains.size > 0) {
     try {
-      const origins: string[] = []
-      domains.forEach(d => {
-        origins.push(`http://${d}`, `https://${d}`)
-      })
+      const origins = buildOrigins(domains)
       await chrome.browsingData.remove(
         { origins },
         {

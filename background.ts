@@ -3,6 +3,7 @@ import { WHITELIST_KEY, BLACKLIST_KEY, SETTINGS_KEY } from "~store"
 import type { Settings } from "~types"
 import { ModeType, CookieClearType, isInList, isDomainMatch } from "~types"
 import { clearBrowserData, type ClearBrowserDataOptions } from "~utils"
+import { cleanDomain } from "~utils/domain"
 
 const storage = new Storage()
 
@@ -61,11 +62,11 @@ const performCleanup = async (domain: string, options?: { clearType?: CookieClea
     if (clearType === CookieClearType.PERSISTENT && isSession) continue
 
     // 清理 Cookie
-    const cleanDomain = cookie.domain.replace(/^\./, '')
-    const url = `http${cookie.secure ? 's' : ''}://${cleanDomain}${cookie.path}`
-    await chrome.cookies.remove({ url, name: cookie.name })
-    count++
-    clearedDomains.add(cleanDomain)
+    const cleanedDomain = cleanDomain(cookie.domain)
+      const url = `http${cookie.secure ? 's' : ''}://${cleanedDomain}${cookie.path}`
+      await chrome.cookies.remove({ url, name: cookie.name })
+      count++
+      clearedDomains.add(cleanedDomain)
   }
 
   // 清理浏览器数据

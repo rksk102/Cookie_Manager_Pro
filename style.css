@@ -218,9 +218,6 @@ body {
   color: var(--text-primary);
   background: var(--bg-primary);
   transition: background-color var(--transition-normal), color var(--transition-normal);
-}
-
-body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -509,6 +506,10 @@ header h1 {
 .btn-danger:hover {
   background: linear-gradient(135deg, var(--danger-700) 0%, var(--danger-600) 100%);
   border-color: var(--danger-700);
+}
+
+.btn-margin-top {
+  margin-top: var(--space-md);
 }
 
 .stats {

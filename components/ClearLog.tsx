@@ -1,7 +1,8 @@
 import { useStorage } from "@plasmohq/storage/hook"
 import { CLEAR_LOG_KEY, SETTINGS_KEY, DEFAULT_SETTINGS, LOG_RETENTION_MAP } from "~store"
 import type { ClearLog as ClearLogType, Settings } from "~types"
-import { CookieClearType, LogRetention } from "~types"
+import { CookieClearType, LogRetention, getCookieTypeName } from "~types"
+import { useMemo } from "react"
 
 interface Props {
   onMessage: (msg: string) => void
@@ -20,17 +21,6 @@ export const ClearLog = ({ onMessage }: Props) => {
       hour: '2-digit',
       minute: '2-digit'
     })
-  }
-
-  const getCookieTypeName = (type: string) => {
-    switch (type) {
-      case 'session':
-        return '会话Cookie'
-      case 'persistent':
-        return '持久Cookie'
-      default:
-        return '所有Cookie'
-    }
   }
 
   const clearAllLogs = () => {
@@ -57,7 +47,7 @@ export const ClearLog = ({ onMessage }: Props) => {
     }
   }
 
-  const sortedLogs = [...logs].sort((a, b) => b.timestamp - a.timestamp)
+  const sortedLogs = useMemo(() => [...logs].sort((a, b) => b.timestamp - a.timestamp), [logs])
 
   return (
     <div className="log-container">

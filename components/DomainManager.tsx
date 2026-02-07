@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useStorage } from "@plasmohq/storage/hook"
 import { WHITELIST_KEY, BLACKLIST_KEY } from "~store"
 import type { DomainList } from "~types"
@@ -17,7 +17,7 @@ export const DomainManager = ({ type, currentDomain, onMessage, onClearBlacklist
     []
   )
 
-  const addDomain = (domain: string) => {
+  const addDomain = useCallback((domain: string) => {
     const trimmed = domain.trim()
     if (!trimmed) {
       onMessage("域名不能为空")
@@ -27,7 +27,6 @@ export const DomainManager = ({ type, currentDomain, onMessage, onClearBlacklist
       onMessage(`${trimmed} 已在${type === "whitelist" ? "白名单" : "黑名单"}中`)
       return
     }
-    // 简单的域名格式验证
     if (!/^[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9]$/.test(trimmed)) {
       onMessage("域名格式不正确")
       return
@@ -35,12 +34,12 @@ export const DomainManager = ({ type, currentDomain, onMessage, onClearBlacklist
     setList([...list, trimmed])
     setInputValue("")
     onMessage(`已添加到${type === "whitelist" ? "白名单" : "黑名单"}`)
-  }
+  }, [list, type, onMessage, setList])
 
-  const removeDomain = (domain: string) => {
+  const removeDomain = useCallback((domain: string) => {
     setList(list.filter((d) => d !== domain))
     onMessage("已删除")
-  }
+  }, [list, setList, onMessage])
 
   return (
     <div className="section">
@@ -70,8 +69,7 @@ export const DomainManager = ({ type, currentDomain, onMessage, onClearBlacklist
       {type === "blacklist" && onClearBlacklist && (
         <button 
           onClick={onClearBlacklist}
-          className="btn btn-danger" 
-          style={{ marginTop: '8px' }}>
+          className="btn btn-danger btn-margin-top">
           清除黑名单Cookie
         </button>
       )}

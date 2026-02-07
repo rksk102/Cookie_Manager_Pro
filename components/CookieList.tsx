@@ -1,11 +1,11 @@
-import { useState } from "react"
+import { useState, memo } from "react"
 import type { Cookie } from "~types"
 
 interface Props {
   cookies: Cookie[]
 }
 
-export const CookieList = ({ cookies }: Props) => {
+export const CookieList = memo(({ cookies }: Props) => {
   const [isExpanded, setIsExpanded] = useState(false)
 
   if (cookies.length === 0) {
@@ -67,4 +67,6 @@ export const CookieList = ({ cookies }: Props) => {
       )}
     </div>
   )
-}
+})
+
+CookieList.displayName = "CookieList"

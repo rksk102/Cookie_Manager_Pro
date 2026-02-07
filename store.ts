@@ -1,5 +1,6 @@
 import { Storage } from "@plasmohq/storage"
 import { CookieClearType, LogRetention, ThemeMode, ModeType } from "~types"
+import type { Settings } from "~types"
 
 export const storage = new Storage()
 
@@ -19,7 +20,7 @@ export const LOG_RETENTION_MAP: Record<string, number> = {
   [LogRetention.THIRTY_DAYS]: 30 * 24 * 60 * 60 * 1000
 }
 
-export const DEFAULT_SETTINGS = {
+export const DEFAULT_SETTINGS: Settings = {
   clearType: CookieClearType.ALL,
   logRetention: LogRetention.SEVEN_DAYS,
   themeMode: ThemeMode.AUTO,
