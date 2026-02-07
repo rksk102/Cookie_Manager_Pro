@@ -1,7 +1,7 @@
 {
   "name": "cookie-manager-pro",
   "displayName": "Cookie Manager Pro",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "高级Cookie管理，支持白名单/黑名单功能和选择性Cookie清除",
 
   "packageManager": "npm@10.0.0",
