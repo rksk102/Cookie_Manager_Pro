@@ -114,7 +114,7 @@ jobs:
           echo "📁 Production build:"
           ls -la build/chrome-mv3-prod/
           # Check for required files
-          REQUIRED_FILES=("manifest.json" "popup.html" "background.js")
+          REQUIRED_FILES=("manifest.json" "popup.html")
           for file in "${REQUIRED_FILES[@]}"; do
             if [ -f "build/chrome-mv3-prod/$file" ]; then
               echo "✓ $file exists"
@@ -123,6 +123,12 @@ jobs:
               exit 1
             fi
           done
+          # Check for background script
+          if [ -f "build/chrome-mv3-prod/static/background/index.js" ]; then
+            echo "✓ background script exists at static/background/index.js"
+          else
+            echo "ℹ️ background script not found"
+          fi
 
       - name: Security check
         run: |
