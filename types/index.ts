@@ -12,6 +12,18 @@ export interface CookieStats {
   persistent: number;
 }
 
+export interface Cookie {
+  name: string;
+  value: string;
+  domain: string;
+  path: string;
+  secure: boolean;
+  httpOnly: boolean;
+  sameSite: string;
+  expirationDate?: number;
+  storeId?: string;
+}
+
 export enum CookieClearType {
   SESSION = "session",
   PERSISTENT = "persistent",

@@ -4,8 +4,8 @@ import { DomainManager } from "~components/DomainManager"
 import { Settings } from "~components/Settings"
 import { ClearLog } from "~components/ClearLog"
 import { CookieList } from "~components/CookieList"
-import { WHITELIST_KEY, BLACKLIST_KEY, SETTINGS_KEY, CLEAR_LOG_KEY } from "~store"
-import type { DomainList, CookieStats, Settings as SettingsType, ClearLog as ClearLogType } from "~types"
+import { WHITELIST_KEY, BLACKLIST_KEY, SETTINGS_KEY, CLEAR_LOG_KEY, DEFAULT_SETTINGS } from "~store"
+import type { DomainList, CookieStats, Settings as SettingsType, ClearLog as ClearLogType, Cookie } from "~types"
 import { CookieClearType, ThemeMode, LogRetention, ModeType } from "~types"
 import "./style.css"
 
@@ -14,24 +14,12 @@ function IndexPopup() {
   const [activeTab, setActiveTab] = useState("manage")
   const [message, setMessage] = useState({ text: "", isError: false, visible: false })
   const [stats, setStats] = useState<CookieStats>({ total: 0, current: 0, session: 0, persistent: 0 })
-  const [currentCookies, setCurrentCookies] = useState<any[]>([])
+  const [currentCookies, setCurrentCookies] = useState<Cookie[]>([])
   const [theme, setTheme] = useState<ThemeMode>(ThemeMode.AUTO)
 
   const [whitelist, setWhitelist] = useStorage<DomainList>(WHITELIST_KEY, [])
   const [blacklist, setBlacklist] = useStorage<DomainList>(BLACKLIST_KEY, [])
-  const [settings] = useStorage<SettingsType>(SETTINGS_KEY, {
-    clearType: CookieClearType.ALL,
-    logRetention: LogRetention.SEVEN_DAYS,
-    themeMode: ThemeMode.AUTO,
-    mode: ModeType.WHITELIST,
-    clearLocalStorage: false,
-    clearIndexedDB: false,
-    clearCache: false,
-    enableAutoCleanup: false,
-    cleanupOnTabDiscard: false,
-    cleanupOnStartup: false,
-    cleanupExpiredCookies: false
-  })
+  const [settings] = useStorage<SettingsType>(SETTINGS_KEY, DEFAULT_SETTINGS)
   const [logs, setLogs] = useStorage<ClearLogType[]>(CLEAR_LOG_KEY, [])
 
   useEffect(() => {
@@ -201,28 +189,19 @@ function IndexPopup() {
       addLog(successMsg.includes("所有") ? "所有网站" : currentDomain, logType, count)
     }
 
-    if (settings.clearLocalStorage) {
-      localStorage.clear()
-    }
-
-    if (settings.clearIndexedDB) {
-      const databases = await indexedDB.databases()
-      for (const db of databases) {
-        if (db.name) {
-          indexedDB.deleteDatabase(db.name)
-        }
+    if (settings.clearCache && currentDomain) {
+      try {
+        await chrome.browsingData.remove(
+          { origins: [`http://${currentDomain}`, `https://${currentDomain}`] },
+          {
+            cacheStorage: true,
+            fileSystems: true,
+            serviceWorkers: true
+          }
+        )
+      } catch (e) {
+        console.error("Failed to clear cache:", e)
       }
-    }
-
-    if (settings.clearCache) {
-      await chrome.browsingData.remove(
-        { origins: [currentDomain ? `http://${currentDomain}` : `http://${window.location.hostname}`] },
-        {
-          cacheStorage: true,
-          fileSystems: true,
-          serviceWorkers: true
-        }
-      )
     }
 
     showMessage(`${successMsg} ${count} 个Cookie`)
@@ -247,34 +226,26 @@ function IndexPopup() {
           }
         }
         
-        if (settings.clearLocalStorage) {
-          localStorage.clear()
-        }
-        
-        if (settings.clearIndexedDB) {
-          const databases = await indexedDB.databases()
-          for (const db of databases) {
-            if (db.name) {
-              indexedDB.deleteDatabase(db.name)
-            }
-          }
-        }
-        
         if (settings.clearCache) {
-          await chrome.browsingData.remove(
-            { origins: [`http://${domain}`] },
-            {
-              cacheStorage: true,
-              fileSystems: true,
-              serviceWorkers: true
-            }
-          )
+          try {
+            await chrome.browsingData.remove(
+              { origins: [`http://${domain}`, `https://${domain}`] },
+              {
+                cacheStorage: true,
+                fileSystems: true,
+                serviceWorkers: true
+              }
+            )
+          } catch (e) {
+            console.error("Failed to clear cache:", e)
+          }
         }
         
         if (count > 0) {
           addLog("启动清理", CookieClearType.ALL, count)
         }
       } catch (e) {
+        console.error("Failed to cleanup on startup:", e)
       }
     }
   }

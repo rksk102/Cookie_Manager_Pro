@@ -1,5 +1,5 @@
 import { useStorage } from "@plasmohq/storage/hook"
-import { SETTINGS_KEY } from "~store"
+import { SETTINGS_KEY, DEFAULT_SETTINGS } from "~store"
 import type { Settings as SettingsType } from "~types"
 import { CookieClearType, LogRetention, ThemeMode, ModeType } from "~types"
 
@@ -8,19 +8,7 @@ interface Props {
 }
 
 export const Settings = ({ onMessage }: Props) => {
-  const [settings, setSettings] = useStorage<SettingsType>(SETTINGS_KEY, {
-    clearType: CookieClearType.ALL,
-    logRetention: LogRetention.SEVEN_DAYS,
-    themeMode: ThemeMode.AUTO,
-    mode: ModeType.WHITELIST,
-    clearLocalStorage: false,
-    clearIndexedDB: false,
-    clearCache: false,
-    enableAutoCleanup: false,
-    cleanupOnTabDiscard: false,
-    cleanupOnStartup: false,
-    cleanupExpiredCookies: false
-  })
+  const [settings, setSettings] = useStorage<SettingsType>(SETTINGS_KEY, DEFAULT_SETTINGS)
 
   const updateSetting = <K extends keyof SettingsType>(key: K, value: SettingsType[K]) => {
     setSettings({ ...settings, [key]: value })

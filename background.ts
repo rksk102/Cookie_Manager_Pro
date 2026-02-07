@@ -5,8 +5,6 @@ import { ModeType } from "~types"
 
 const storage = new Storage()
 
-export {}
-
 chrome.runtime.onInstalled.addListener(async () => {
   const whitelist = await storage.get(WHITELIST_KEY)
   const blacklist = await storage.get(BLACKLIST_KEY)
@@ -51,43 +49,25 @@ const performCleanup = async (domain: string) => {
     }
   }
 
-  if (settings.clearLocalStorage) {
-    localStorage.clear()
-  }
-
-  if (settings.clearIndexedDB) {
-    const databases = await indexedDB.databases()
-    for (const db of databases) {
-      if (db.name) {
-        indexedDB.deleteDatabase(db.name)
-      }
-    }
-  }
-
   if (settings.clearCache) {
-    await chrome.browsingData.remove(
-      { origins: [`http://${domain}`] },
-      {
-        cacheStorage: true,
-        fileSystems: true,
-        serviceWorkers: true
-      }
-    )
+    try {
+      await chrome.browsingData.remove(
+        { origins: [`http://${domain}`, `https://${domain}`] },
+        {
+          cacheStorage: true,
+          fileSystems: true,
+          serviceWorkers: true
+        }
+      )
+    } catch (e) {
+      console.error("Failed to clear cache:", e)
+    }
   }
 }
 
-chrome.tabs.onRemoved.addListener(async (tabId) => {
+chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
   const settings = await storage.get<Settings>(SETTINGS_KEY)
   if (!settings?.enableAutoCleanup || !settings?.cleanupOnTabDiscard) return
-
-  try {
-    const tab = await chrome.tabs.get(tabId)
-    if (tab?.url) {
-      const url = new URL(tab.url)
-      await performCleanup(url.hostname)
-    }
-  } catch (e) {
-  }
 })
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
@@ -99,6 +79,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       const url = new URL(tab.url)
       await performCleanup(url.hostname)
     } catch (e) {
+      console.error("Failed to cleanup on tab update:", e)
     }
   }
 })
@@ -113,6 +94,7 @@ chrome.runtime.onStartup.addListener(async () => {
       const url = new URL(tab.url)
       await performCleanup(url.hostname)
     } catch (e) {
+      console.error("Failed to cleanup on startup:", e)
     }
   }
 })

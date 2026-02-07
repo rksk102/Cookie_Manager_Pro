@@ -1,16 +1,5 @@
 import { useState } from "react"
-
-interface Cookie {
-  name: string
-  value: string
-  domain: string
-  path: string
-  secure: boolean
-  httpOnly: boolean
-  sameSite: string
-  expirationDate?: number
-  storeId?: string
-}
+import type { Cookie } from "~types"
 
 interface Props {
   cookies: Cookie[]
