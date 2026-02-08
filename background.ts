@@ -54,11 +54,9 @@ const performCleanup = async (domain: string, options?: { clearType?: CookieClea
 }
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  // 获取设置
   const settings = await storage.get<Settings>(SETTINGS_KEY)
   if (!settings?.enableAutoCleanup || !settings?.cleanupOnTabDiscard) return
 
-  // 当标签页被丢弃时清理
   if (changeInfo.discarded && tab.url) {
     try {
       const url = new URL(tab.url)

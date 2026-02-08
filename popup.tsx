@@ -23,10 +23,8 @@ function IndexPopup() {
   const [settings] = useStorage<SettingsType>(SETTINGS_KEY, DEFAULT_SETTINGS)
   const [logs, setLogs] = useStorage<ClearLogType[]>(CLEAR_LOG_KEY, [])
 
-  // 初始化函数，在组件加载时执行
   useEffect(() => {
     async function init() {
-      // 获取当前标签页域名
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
       if (tab?.url) {
         try {
@@ -36,31 +34,25 @@ function IndexPopup() {
           setCurrentDomain("")
         }
       }
-      // 更新统计信息
       updateStats()
-      // 应用主题
       applyTheme()
       
-      // 启动时清理
       if (settings.cleanupOnStartup) {
         await cleanupStartup()
       }
       
-      // 清理过期 Cookie
       if (settings.cleanupExpiredCookies) {
         await cleanupExpiredCookies()
       }
     }
     init()
 
-    // 根据当前模式切换标签
     if (activeTab === "whitelist" && settings.mode === ModeType.BLACKLIST) {
       setActiveTab("manage")
     } else if (activeTab === "blacklist" && settings.mode === ModeType.WHITELIST) {
       setActiveTab("manage")
     }
 
-    // 监听 Cookie 变化
     const cookieListener = () => updateStats()
     chrome.cookies.onChanged.addListener(cookieListener)
 
@@ -69,32 +61,23 @@ function IndexPopup() {
     }
   }, [currentDomain])
 
-  // 应用主题函数
   const applyTheme = () => {
     const themeMode = settings.themeMode
     if (themeMode === ThemeMode.AUTO) {
-      // 跟随系统主题
       const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
       setTheme(isDark ? ThemeMode.DARK : ThemeMode.LIGHT)
     } else {
-      // 使用用户设置的主题
       setTheme(themeMode)
     }
   }
 
-  // 更新统计信息函数
   const updateStats = async () => {
     try {
-      // 获取所有 Cookie
       const cookies = await chrome.cookies.getAll({})
-      // 筛选当前域名的 Cookie
       const currentCookiesList = cookies.filter(c => isDomainMatch(c.domain, currentDomain))
-      // 筛选会话 Cookie
       const sessionCookies = currentCookiesList.filter(c => !c.expirationDate)
-      // 筛选持久 Cookie
       const persistentCookies = currentCookiesList.filter(c => c.expirationDate)
       
-      // 更新统计数据
       setStats({ 
         total: cookies.length, 
         current: currentCookiesList.length,
@@ -168,7 +151,6 @@ function IndexPopup() {
     }
   }
 
-  // 清除 Cookie 函数
   const clearCookies = async (filterFn: (domain: string) => boolean, successMsg: string, logType: CookieClearType) => {
     try {
       const isInWhitelist = settings.mode === ModeType.WHITELIST
@@ -196,7 +178,6 @@ function IndexPopup() {
     }
   }
 
-  // 启动清理函数
   const cleanupStartup = async () => {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -237,19 +218,15 @@ function IndexPopup() {
     }
   }
 
-  // 清理过期 Cookie 函数
   const cleanupExpiredCookies = async () => {
     try {
-      // 获取所有 Cookie
       const cookies = await chrome.cookies.getAll({})
       const now = Date.now()
       let count = 0
       
       for (const cookie of cookies) {
         try {
-          // 检查是否过期
           if (cookie.expirationDate && cookie.expirationDate * 1000 < now) {
-            // 清理过期 Cookie
             const url = `http${cookie.secure ? 's' : ''}://${cookie.domain}${cookie.path}`
             await chrome.cookies.remove({ url, name: cookie.name })
             count++
@@ -259,7 +236,6 @@ function IndexPopup() {
         }
       }
       
-      // 显示清理结果
       if (count > 0) {
         addLog("过期 Cookie 清理", CookieClearType.ALL, count)
         showMessage(`已清理 ${count} 个过期 Cookie`)
@@ -267,7 +243,6 @@ function IndexPopup() {
         showMessage("没有找到过期的 Cookie")
       }
       
-      // 更新统计信息
       updateStats()
     } catch (e) {
       console.error("Failed to cleanup expired cookies:", e)
