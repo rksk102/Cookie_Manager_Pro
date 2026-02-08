@@ -25,7 +25,8 @@
   },
   "overrides": {
     "msgpackr": "1.11.8",
-    "content-security-policy-parser": "0.6.0"
+    "content-security-policy-parser": "0.6.0",
+    "svelte": "4.2.19"
   },
   "manifest": {
     "permissions": [
