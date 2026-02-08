@@ -20,6 +20,33 @@ export interface ClearCookiesOptions {
   filterFn?: (domain: string) => boolean
 }
 
+const shouldClearCookieByType = (cookie: chrome.cookies.Cookie, clearType: CookieClearType): boolean => {
+  const isSession = !cookie.expirationDate
+  if (clearType === 'session' && !isSession) return false
+  if (clearType === 'persistent' && isSession) return false
+  return true
+}
+
+const shouldClearCookieByFilter = (domain: string, filterFn?: (domain: string) => boolean): boolean => {
+  if (filterFn && !filterFn(domain)) return false
+  return true
+}
+
+const buildCookieUrl = (cookie: chrome.cookies.Cookie, cleanedDomain: string): string => {
+  return `http${cookie.secure ? 's' : ''}://${cleanedDomain}${cookie.path}`
+}
+
+const clearSingleCookie = async (cookie: chrome.cookies.Cookie, cleanedDomain: string): Promise<boolean> => {
+  try {
+    const url = buildCookieUrl(cookie, cleanedDomain)
+    await chrome.cookies.remove({ url, name: cookie.name })
+    return true
+  } catch (e) {
+    console.error(`Failed to clear cookie ${cookie.name}:`, e)
+    return false
+  }
+}
+
 export const clearCookies = async (options: ClearCookiesOptions = {}) => {
   const { domains, clearType, filterFn } = options
   const cookies = await chrome.cookies.getAll({})
@@ -27,23 +54,16 @@ export const clearCookies = async (options: ClearCookiesOptions = {}) => {
   const clearedDomains = new Set<string>()
 
   for (const cookie of cookies) {
-    try {
-      const cleanedDomain = cookie.domain.replace(/^\./, '')
-      
-      if (filterFn && !filterFn(cleanedDomain)) continue
+    const cleanedDomain = cookie.domain.replace(/^\./, '')
 
-      if (clearType) {
-        const isSession = !cookie.expirationDate
-        if (clearType === 'session' && !isSession) continue
-        if (clearType === 'persistent' && isSession) continue
-      }
+    if (!shouldClearCookieByFilter(cleanedDomain, filterFn)) continue
 
-      const url = `http${cookie.secure ? 's' : ''}://${cleanedDomain}${cookie.path}`
-      await chrome.cookies.remove({ url, name: cookie.name })
+    if (clearType && !shouldClearCookieByType(cookie, clearType)) continue
+
+    const cleared = await clearSingleCookie(cookie, cleanedDomain)
+    if (cleared) {
       count++
       clearedDomains.add(cleanedDomain)
-    } catch (e) {
-      console.error(`Failed to clear cookie ${cookie.name}:`, e)
     }
   }
 
