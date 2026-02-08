@@ -15,7 +15,6 @@ export interface ClearBrowserDataOptions {
 }
 
 export interface ClearCookiesOptions {
-  domains?: Set<string>
   clearType?: CookieClearType
   filterFn?: (domain: string) => boolean
 }
@@ -48,7 +47,7 @@ const clearSingleCookie = async (cookie: chrome.cookies.Cookie, cleanedDomain: s
 }
 
 export const clearCookies = async (options: ClearCookiesOptions = {}) => {
-  const { domains, clearType, filterFn } = options
+  const { clearType, filterFn } = options
   const cookies = await chrome.cookies.getAll({})
   let count = 0
   const clearedDomains = new Set<string>()
