@@ -3,7 +3,7 @@ import type { CookieClearType } from "~types";
 export const buildOrigins = (domains: Set<string>): string[] => {
   const origins: string[] = [];
   domains.forEach((d) => {
-    origins.push(`http://${d}`, `https://${d}`);
+    origins.push(`https://${d}`);
   });
   return origins;
 };

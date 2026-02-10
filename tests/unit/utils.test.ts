@@ -6,18 +6,13 @@ describe("buildOrigins", () => {
   it("should build origins for single domain", () => {
     const domains = new Set(["example.com"]);
     const result = buildOrigins(domains);
-    expect(result).toEqual(["http://example.com", "https://example.com"]);
+    expect(result).toEqual(["https://example.com"]);
   });
 
   it("should build origins for multiple domains", () => {
     const domains = new Set(["example.com", "test.org"]);
     const result = buildOrigins(domains);
-    expect(result).toEqual([
-      "http://example.com",
-      "https://example.com",
-      "http://test.org",
-      "https://test.org",
-    ]);
+    expect(result).toEqual(["https://example.com", "https://test.org"]);
   });
 
   it("should return empty array for empty set", () => {
@@ -157,7 +152,7 @@ describe("clearBrowserData", () => {
 
   it("should clear cache when clearCache is true", async () => {
     const domains = new Set(["example.com"]);
-    const mockOrigins = ["http://example.com", "https://example.com"];
+    const mockOrigins = ["https://example.com"];
 
     vi.spyOn(chrome.browsingData, "remove").mockResolvedValue(undefined);
 
@@ -175,7 +170,7 @@ describe("clearBrowserData", () => {
 
   it("should clear localStorage when clearLocalStorage is true", async () => {
     const domains = new Set(["example.com"]);
-    const mockOrigins = ["http://example.com", "https://example.com"];
+    const mockOrigins = ["https://example.com"];
 
     vi.spyOn(chrome.browsingData, "remove").mockResolvedValue(undefined);
 
@@ -191,7 +186,7 @@ describe("clearBrowserData", () => {
 
   it("should clear IndexedDB when clearIndexedDB is true", async () => {
     const domains = new Set(["example.com"]);
-    const mockOrigins = ["http://example.com", "https://example.com"];
+    const mockOrigins = ["https://example.com"];
 
     vi.spyOn(chrome.browsingData, "remove").mockResolvedValue(undefined);
 
