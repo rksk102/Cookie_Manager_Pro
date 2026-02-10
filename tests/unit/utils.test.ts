@@ -2,6 +2,32 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { buildOrigins, clearCookies, clearBrowserData } from "../../utils";
 import type { CookieClearType } from "../../types";
 
+// Test fixtures
+const createMockCookies = (): chrome.cookies.Cookie[] => [
+  { name: "test1", domain: "example.com", path: "/", secure: false, httpOnly: false },
+  { name: "test2", domain: "test.org", path: "/", secure: true, httpOnly: true },
+];
+
+const createMockCookiesWithTypes = (): chrome.cookies.Cookie[] => [
+  {
+    name: "session1",
+    domain: "example.com",
+    path: "/",
+    secure: false,
+    httpOnly: false,
+  },
+  {
+    name: "persistent1",
+    domain: "example.com",
+    path: "/",
+    secure: true,
+    httpOnly: false,
+    expirationDate: Date.now() / 1000 + 3600,
+  },
+];
+
+const mockRemoveResponse = { name: "test", url: "http://example.com" } as any;
+
 describe("buildOrigins", () => {
   it("should build origins for single domain", () => {
     const domains = new Set(["example.com"]);
@@ -27,17 +53,13 @@ describe("clearCookies", () => {
     vi.clearAllMocks();
   });
 
-  it("should clear all cookies when no options provided", async () => {
-    const mockCookies = [
-      { name: "test1", domain: "example.com", path: "/", secure: false, httpOnly: false },
-      { name: "test2", domain: "test.org", path: "/", secure: true, httpOnly: true },
-    ] as chrome.cookies.Cookie[];
+  const setupCookieMocks = (cookies: chrome.cookies.Cookie[]) => {
+    vi.spyOn(chrome.cookies, "getAll").mockResolvedValue(cookies);
+    vi.spyOn(chrome.cookies, "remove").mockResolvedValue(mockRemoveResponse);
+  };
 
-    vi.spyOn(chrome.cookies, "getAll").mockResolvedValue(mockCookies);
-    vi.spyOn(chrome.cookies, "remove").mockResolvedValue({
-      name: "test",
-      url: "http://example.com",
-    } as any);
+  it("should clear all cookies when no options provided", async () => {
+    setupCookieMocks(createMockCookies());
 
     const result = await clearCookies();
 
@@ -47,16 +69,7 @@ describe("clearCookies", () => {
   });
 
   it("should filter cookies by domain", async () => {
-    const mockCookies = [
-      { name: "test1", domain: "example.com", path: "/", secure: false, httpOnly: false },
-      { name: "test2", domain: "test.org", path: "/", secure: true, httpOnly: true },
-    ] as chrome.cookies.Cookie[];
-
-    vi.spyOn(chrome.cookies, "getAll").mockResolvedValue(mockCookies);
-    vi.spyOn(chrome.cookies, "remove").mockResolvedValue({
-      name: "test",
-      url: "http://example.com",
-    } as any);
+    setupCookieMocks(createMockCookies());
 
     const result = await clearCookies({
       filterFn: (domain) => domain === "example.com",
@@ -67,29 +80,7 @@ describe("clearCookies", () => {
   });
 
   it("should filter cookies by type - session only", async () => {
-    const mockCookies = [
-      {
-        name: "session1",
-        domain: "example.com",
-        path: "/",
-        secure: false,
-        httpOnly: false,
-      },
-      {
-        name: "persistent1",
-        domain: "example.com",
-        path: "/",
-        secure: true,
-        httpOnly: false,
-        expirationDate: Date.now() / 1000 + 3600,
-      },
-    ] as chrome.cookies.Cookie[];
-
-    vi.spyOn(chrome.cookies, "getAll").mockResolvedValue(mockCookies);
-    vi.spyOn(chrome.cookies, "remove").mockResolvedValue({
-      name: "test",
-      url: "http://example.com",
-    } as any);
+    setupCookieMocks(createMockCookiesWithTypes());
 
     const result = await clearCookies({
       clearType: "session" as CookieClearType,
@@ -99,29 +90,7 @@ describe("clearCookies", () => {
   });
 
   it("should filter cookies by type - persistent only", async () => {
-    const mockCookies = [
-      {
-        name: "session1",
-        domain: "example.com",
-        path: "/",
-        secure: false,
-        httpOnly: false,
-      },
-      {
-        name: "persistent1",
-        domain: "example.com",
-        path: "/",
-        secure: true,
-        httpOnly: false,
-        expirationDate: Date.now() / 1000 + 3600,
-      },
-    ] as chrome.cookies.Cookie[];
-
-    vi.spyOn(chrome.cookies, "getAll").mockResolvedValue(mockCookies);
-    vi.spyOn(chrome.cookies, "remove").mockResolvedValue({
-      name: "test",
-      url: "http://example.com",
-    } as any);
+    setupCookieMocks(createMockCookiesWithTypes());
 
     const result = await clearCookies({
       clearType: "persistent" as CookieClearType,
@@ -131,11 +100,7 @@ describe("clearCookies", () => {
   });
 
   it("should handle errors gracefully", async () => {
-    const mockCookies = [
-      { name: "test1", domain: "example.com", path: "/", secure: false, httpOnly: false },
-    ] as chrome.cookies.Cookie[];
-
-    vi.spyOn(chrome.cookies, "getAll").mockResolvedValue(mockCookies);
+    vi.spyOn(chrome.cookies, "getAll").mockResolvedValue(createMockCookies().slice(0, 1));
     vi.spyOn(chrome.cookies, "remove").mockRejectedValue(new Error("Failed to remove"));
 
     const result = await clearCookies();
@@ -146,20 +111,25 @@ describe("clearCookies", () => {
 });
 
 describe("clearBrowserData", () => {
+  const testDomain = "example.com";
+  const testOrigins = ["https://example.com"];
+  const testDomains = new Set([testDomain]);
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("should clear cache when clearCache is true", async () => {
-    const domains = new Set(["example.com"]);
-    const mockOrigins = ["https://example.com"];
-
+  const setupBrowsingDataMock = () => {
     vi.spyOn(chrome.browsingData, "remove").mockResolvedValue(undefined);
+  };
 
-    await clearBrowserData(domains, { clearCache: true });
+  it("should clear cache when clearCache is true", async () => {
+    setupBrowsingDataMock();
+
+    await clearBrowserData(testDomains, { clearCache: true });
 
     expect(chrome.browsingData.remove).toHaveBeenCalledWith(
-      { origins: mockOrigins },
+      { origins: testOrigins },
       {
         cacheStorage: true,
         fileSystems: true,
@@ -169,15 +139,12 @@ describe("clearBrowserData", () => {
   });
 
   it("should clear localStorage when clearLocalStorage is true", async () => {
-    const domains = new Set(["example.com"]);
-    const mockOrigins = ["https://example.com"];
+    setupBrowsingDataMock();
 
-    vi.spyOn(chrome.browsingData, "remove").mockResolvedValue(undefined);
-
-    await clearBrowserData(domains, { clearLocalStorage: true });
+    await clearBrowserData(testDomains, { clearLocalStorage: true });
 
     expect(chrome.browsingData.remove).toHaveBeenCalledWith(
-      { origins: mockOrigins },
+      { origins: testOrigins },
       {
         localStorage: true,
       }
@@ -185,15 +152,12 @@ describe("clearBrowserData", () => {
   });
 
   it("should clear IndexedDB when clearIndexedDB is true", async () => {
-    const domains = new Set(["example.com"]);
-    const mockOrigins = ["https://example.com"];
+    setupBrowsingDataMock();
 
-    vi.spyOn(chrome.browsingData, "remove").mockResolvedValue(undefined);
-
-    await clearBrowserData(domains, { clearIndexedDB: true });
+    await clearBrowserData(testDomains, { clearIndexedDB: true });
 
     expect(chrome.browsingData.remove).toHaveBeenCalledWith(
-      { origins: mockOrigins },
+      { origins: testOrigins },
       {
         indexedDB: true,
       }
@@ -201,11 +165,9 @@ describe("clearBrowserData", () => {
   });
 
   it("should not clear anything when all options are false", async () => {
-    const domains = new Set(["example.com"]);
+    setupBrowsingDataMock();
 
-    vi.spyOn(chrome.browsingData, "remove").mockResolvedValue(undefined);
-
-    await clearBrowserData(domains, {
+    await clearBrowserData(testDomains, {
       clearCache: false,
       clearLocalStorage: false,
       clearIndexedDB: false,
@@ -215,21 +177,17 @@ describe("clearBrowserData", () => {
   });
 
   it("should handle errors gracefully", async () => {
-    const domains = new Set(["example.com"]);
-
     vi.spyOn(chrome.browsingData, "remove").mockRejectedValue(new Error("Failed to clear"));
 
-    await clearBrowserData(domains, { clearCache: true });
+    await clearBrowserData(testDomains, { clearCache: true });
 
     expect(chrome.browsingData.remove).toHaveBeenCalled();
   });
 
   it("should not call clear when domains is empty", async () => {
-    const domains = new Set<string>();
+    setupBrowsingDataMock();
 
-    vi.spyOn(chrome.browsingData, "remove").mockResolvedValue(undefined);
-
-    await clearBrowserData(domains, { clearCache: true });
+    await clearBrowserData(new Set<string>(), { clearCache: true });
 
     expect(chrome.browsingData.remove).not.toHaveBeenCalled();
   });
