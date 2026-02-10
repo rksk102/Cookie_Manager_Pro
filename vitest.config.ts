@@ -11,10 +11,20 @@ export default defineConfig({
       reporter: ["text", "json", "html"],
       exclude: ["node_modules/", "tests/", "**/*.config.{ts,js}", "**/*.d.ts"],
     },
+    deps: {
+      optimizer: {
+        web: {
+          include: ["vitest > @vitest/ui", "vitest > jsdom"],
+        },
+      },
+    },
   },
   resolve: {
     alias: {
       "~": path.resolve(__dirname),
     },
+  },
+  optimizeDeps: {
+    include: ["jsdom"],
   },
 });
