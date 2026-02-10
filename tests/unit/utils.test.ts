@@ -39,7 +39,10 @@ describe("clearCookies", () => {
     ] as chrome.cookies.Cookie[];
 
     vi.spyOn(chrome.cookies, "getAll").mockResolvedValue(mockCookies);
-    vi.spyOn(chrome.cookies, "remove").mockResolvedValue({ name: "test", url: "http://example.com" });
+    vi.spyOn(chrome.cookies, "remove").mockResolvedValue({
+      name: "test",
+      url: "http://example.com",
+    } as any);
 
     const result = await clearCookies();
 
@@ -55,7 +58,10 @@ describe("clearCookies", () => {
     ] as chrome.cookies.Cookie[];
 
     vi.spyOn(chrome.cookies, "getAll").mockResolvedValue(mockCookies);
-    vi.spyOn(chrome.cookies, "remove").mockResolvedValue({ name: "test", url: "http://example.com" });
+    vi.spyOn(chrome.cookies, "remove").mockResolvedValue({
+      name: "test",
+      url: "http://example.com",
+    } as any);
 
     const result = await clearCookies({
       filterFn: (domain) => domain === "example.com",
@@ -85,7 +91,10 @@ describe("clearCookies", () => {
     ] as chrome.cookies.Cookie[];
 
     vi.spyOn(chrome.cookies, "getAll").mockResolvedValue(mockCookies);
-    vi.spyOn(chrome.cookies, "remove").mockResolvedValue({ name: "test", url: "http://example.com" });
+    vi.spyOn(chrome.cookies, "remove").mockResolvedValue({
+      name: "test",
+      url: "http://example.com",
+    } as any);
 
     const result = await clearCookies({
       clearType: "session" as CookieClearType,
@@ -114,7 +123,10 @@ describe("clearCookies", () => {
     ] as chrome.cookies.Cookie[];
 
     vi.spyOn(chrome.cookies, "getAll").mockResolvedValue(mockCookies);
-    vi.spyOn(chrome.cookies, "remove").mockResolvedValue({ name: "test", url: "http://example.com" });
+    vi.spyOn(chrome.cookies, "remove").mockResolvedValue({
+      name: "test",
+      url: "http://example.com",
+    } as any);
 
     const result = await clearCookies({
       clearType: "persistent" as CookieClearType,
