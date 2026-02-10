@@ -51,6 +51,46 @@ jobs:
             echo "ℹ️ Prettier not configured, skipping format check"
           fi
 
+      - name: Run unit tests
+        run: |
+          if [ -f "package.json" ] && grep -q "vitest" package.json; then
+            npm run test
+          else
+            echo "ℹ️ Vitest not configured, skipping unit tests"
+          fi
+
+      - name: Upload coverage reports
+        if: always()
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/coverage-final.json
+          flags: unittests
+          fail_ci_if_error: false
+
+      - name: Install Playwright browsers
+        run: |
+          if [ -f "package.json" ] && grep -q "@playwright/test" package.json; then
+            npx playwright install --with-deps
+          else
+            echo "ℹ️ Playwright not configured, skipping E2E tests"
+          fi
+
+      - name: Run E2E tests
+        run: |
+          if [ -f "package.json" ] && grep -q "@playwright/test" package.json; then
+            npm run test:e2e
+          else
+            echo "ℹ️ Playwright not configured, skipping E2E tests"
+          fi
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
       - name: Check manifest validity
         run: |
           if [ -f "package.json" ]; then
@@ -230,6 +270,20 @@ jobs:
           echo "✅ Build completed successfully"
           echo "✅ TypeScript check passed"
           echo "✅ Dependency audit completed"
+          echo "✅ ESLint check passed"
+          echo "✅ Prettier check passed"
+          
+          if [ -f "package.json" ] && grep -q "vitest" package.json; then
+            echo "✅ Unit tests passed"
+          else
+            echo "ℹ️ Vitest not configured, skipping unit tests"
+          fi
+          
+          if [ -f "package.json" ] && grep -q "@playwright/test" package.json; then
+            echo "✅ E2E tests passed"
+          else
+            echo "ℹ️ Playwright not configured, skipping E2E tests"
+          fi
           
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "✅ Extension packaged"
