@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0  # 获取完整的 git 历史和所有 tags
 
       - name: Setup Node.js
         uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a  # v4.2.0
@@ -238,8 +240,17 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         id: generate_notes
         run: |
+          # 显示所有 tags
+          echo "📋 Available tags:"
+          git tag -l | sort -V
+          
           # 获取上一个 tag
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "🏷️ Previous tag: $PREVIOUS_TAG"
+          
+          # 获取当前版本
+          CURRENT_VERSION="${{ steps.get_version.outputs.version }}"
+          echo "📌 Current version: v$CURRENT_VERSION"
           
           if [ -z "$PREVIOUS_TAG" ]; then
             # 如果没有上一个 tag，生成所有历史记录
@@ -251,9 +262,14 @@ jobs:
             NOTES=$(npx git-cliff "$PREVIOUS_TAG..HEAD" --strip header)
           fi
           
+          # 显示生成的内容（用于调试）
+          echo "📝 Generated notes:"
+          echo "$NOTES"
+          
           # 如果没有生成内容，使用默认内容
-          if [ -z "$NOTES" ] || [ "$NOTES" = "## [${{ steps.get_version.outputs.version }}]" ]; then
-            NOTES=$(printf "## What's Changed\n\n- 版本更新至 %s\n- 详见提交历史" "${{ steps.get_version.outputs.version }}")
+          if [ -z "$NOTES" ] || [ "$NOTES" = "## [Unreleased]" ]; then
+            echo "⚠️ No notes generated, using default"
+            NOTES=$(printf "## What's Changed\n\n- 版本更新至 %s\n- 详见提交历史" "$CURRENT_VERSION")
           fi
           
           # 设置多行输出
