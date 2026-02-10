@@ -82,6 +82,7 @@ jobs:
           fi
 
       - name: Install Playwright browsers
+        if: github.event_name == 'workflow_dispatch'
         run: |
           if [ -f "package.json" ] && grep -q "@playwright/test" package.json; then
             npx playwright install --with-deps
@@ -90,6 +91,7 @@ jobs:
           fi
 
       - name: Run E2E tests
+        if: github.event_name == 'workflow_dispatch'
         run: |
           if [ -f "package.json" ] && grep -q "@playwright/test" package.json; then
             npm run test:e2e
@@ -98,7 +100,7 @@ jobs:
           fi
 
       - name: Upload Playwright report
-        if: always()
+        if: github.event_name == 'workflow_dispatch' && always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report

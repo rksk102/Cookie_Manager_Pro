@@ -1,4 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
+import path from "path";
+
+const extensionPath = path.join(__dirname, "build", "chrome-mv3-prod");
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -15,7 +18,16 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        // Launch Chrome with the extension loaded
+        launchOptions: {
+          args: [
+            `--disable-extensions-except=${extensionPath}`,
+            `--load-extension=${extensionPath}`,
+          ],
+        },
+      },
     },
   ],
   outputDir: "test-results",
