@@ -77,6 +77,25 @@ npm run build
 npm run package
 ```
 
+### 代码质量
+
+```bash
+npm run lint          # ESLint 检查
+npm run lint:fix      # 自动修复 ESLint 问题
+npm run format        # Prettier 格式化代码
+npm run format:check  # 检查代码格式
+```
+
+### 测试
+
+```bash
+npm run test          # 运行单元测试
+npm run test:ui       # 单元测试 UI 模式
+npm run test:coverage # 生成测试覆盖率报告
+npm run test:e2e      # 运行 E2E 测试
+npm run test:e2e:ui   # E2E 测试 UI 模式
+```
+
 ---
 
 ## 📁 项目结构
@@ -89,9 +108,12 @@ Cookie_Manager_Pro/
 │   ├── ClearLog.tsx      # 清理日志
 │   ├── CookieList.tsx    # Cookie 列表
 │   ├── DomainManager.tsx # 域名管理
-│   └── Settings.tsx      # 设置面板
+│   ├── Settings.tsx      # 设置面板
+│   ├── RadioGroup.tsx    # 单选按钮组
+│   └── CheckboxGroup.tsx # 复选框组
 ├── types/                 # TypeScript 类型
 │   └── index.ts          # 类型定义
+├── utils.ts              # 工具函数
 ├── background.ts          # Service Worker
 ├── popup.tsx             # 弹出窗口
 ├── store.ts              # 存储管理
@@ -115,12 +137,21 @@ Cookie_Manager_Pro/
 
 ## 🔒 权限说明
 
+### 必需权限
+
 | 权限 | 用途 |
 |------|------|
 | `cookies` | 读取和管理浏览器 Cookie |
 | `storage` | 存储设置和名单数据 |
 | `tabs` | 获取当前标签页信息 |
 | `browsingData` | 清理浏览器缓存数据 |
+
+### 主机权限
+
+| 权限 | 用途 |
+|------|------|
+| `https://*/*` | 管理 HTTPS 网站的 Cookie |
+| `http://*/*` | 管理 HTTP 网站的 Cookie |
 
 ---
 
