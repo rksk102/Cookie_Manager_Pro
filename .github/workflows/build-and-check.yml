@@ -61,7 +61,7 @@ jobs:
 
       - name: Upload coverage reports
         if: always()
-        uses: codecov/codecov-action@ab904c41d6e827ac3810c78579dcaddf9b82a9d8  # v3.1.6
+        uses: codecov/codecov-action@9cc74bf7e13a810454a28846494ddbc3795eb693  # v3.1.6
         with:
           files: ./coverage/coverage-final.json
           flags: unittests
