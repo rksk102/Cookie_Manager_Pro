@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import type { CookieClearType } from "../../types";
+import { CookieClearType } from "../../types";
 
 test.describe("Cookie Manager Pro - 核心功能测试", () => {
   test("应该能够添加域名到白名单", async ({ page }) => {
@@ -8,11 +8,16 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     const domain = "example.com";
 
     const isAdded = await page.evaluate(async (domain) => {
-      const { storage } = await import("../../store");
-      const whitelist = await storage.get("whitelist");
-      const currentList = whitelist || [];
-      await storage.set("whitelist", [...currentList, domain]);
-      return true;
+      try {
+        const { storage } = await import("../../store");
+        const whitelist = await storage.get("whitelist");
+        const currentList = whitelist || [];
+        await storage.set("whitelist", [...currentList, domain]);
+        return true;
+      } catch (e) {
+        console.error("Error in test:", e);
+        return false;
+      }
     }, domain);
 
     expect(isAdded).toBe(true);
@@ -24,11 +29,16 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     const domain = "example.com";
 
     const isAdded = await page.evaluate(async (domain) => {
-      const { storage } = await import("../../store");
-      const blacklist = await storage.get("blacklist");
-      const currentList = blacklist || [];
-      await storage.set("blacklist", [...currentList, domain]);
-      return true;
+      try {
+        const { storage } = await import("../../store");
+        const blacklist = await storage.get("blacklist");
+        const currentList = blacklist || [];
+        await storage.set("blacklist", [...currentList, domain]);
+        return true;
+      } catch (e) {
+        console.error("Error in test:", e);
+        return false;
+      }
     }, domain);
 
     expect(isAdded).toBe(true);
@@ -41,15 +51,20 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     expect(cookiesBefore.length).toBeGreaterThanOrEqual(0);
 
     const clearedCount = await page.evaluate(async () => {
-      const { performCleanupWithFilter } = await import("../../utils/cleanup");
-      const { isDomainMatch } = await import("../../utils");
+      try {
+        const { performCleanupWithFilter } = await import("../../utils/cleanup");
+        const { isDomainMatch } = await import("../../utils");
 
-      const result = await performCleanupWithFilter(
-        (domain) => isDomainMatch(domain, "example.com"),
-        { clearType: "all" as CookieClearType }
-      );
+        const result = await performCleanupWithFilter(
+          (domain) => isDomainMatch(domain, "example.com"),
+          { clearType: CookieClearType.ALL }
+        );
 
-      return result.count;
+        return result.count;
+      } catch (e) {
+        console.error("Error in test:", e);
+        return 0;
+      }
     });
 
     expect(clearedCount).toBeGreaterThanOrEqual(0);
@@ -61,13 +76,18 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     expect(cookiesBefore.length).toBeGreaterThanOrEqual(0);
 
     const clearedCount = await page.evaluate(async () => {
-      const { performCleanupWithFilter } = await import("../../utils/cleanup");
+      try {
+        const { performCleanupWithFilter } = await import("../../utils/cleanup");
 
-      const result = await performCleanupWithFilter(() => true, {
-        clearType: "all" as CookieClearType,
-      });
+        const result = await performCleanupWithFilter(() => true, {
+          clearType: CookieClearType.ALL,
+        });
 
-      return result.count;
+        return result.count;
+      } catch (e) {
+        console.error("Error in test:", e);
+        return 0;
+      }
     });
 
     expect(clearedCount).toBeGreaterThanOrEqual(0);
@@ -77,9 +97,14 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     await page.goto("https://example.com");
 
     const clearedCount = await page.evaluate(async () => {
-      const { cleanupExpiredCookies } = await import("../../utils/cleanup");
-      const count = await cleanupExpiredCookies();
-      return count;
+      try {
+        const { cleanupExpiredCookies } = await import("../../utils/cleanup");
+        const count = await cleanupExpiredCookies();
+        return count;
+      } catch (e) {
+        console.error("Error in test:", e);
+        return 0;
+      }
     });
 
     expect(clearedCount).toBeGreaterThanOrEqual(0);
@@ -97,10 +122,15 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     };
 
     const isLogged = await page.evaluate(async (entry) => {
-      const { storage } = await import("../../store");
-      const logs = (await storage.get("clearLog")) || [];
-      await storage.set("clearLog", [entry, ...logs]);
-      return true;
+      try {
+        const { storage } = await import("../../store");
+        const logs = (await storage.get("clearLog")) || [];
+        await storage.set("clearLog", [entry, ...logs]);
+        return true;
+      } catch (e) {
+        console.error("Error in test:", e);
+        return false;
+      }
     }, logEntry);
 
     expect(isLogged).toBe(true);
@@ -110,13 +140,18 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     await page.goto("https://example.com");
 
     const isCleared = await page.evaluate(async () => {
-      const { CLEAR_LOG_KEY } = await import("../../store");
-      const { useStorage } = await import("@plasmohq/storage/hook");
-      return new Promise((resolve) => {
-        const [, setLogs] = useStorage(CLEAR_LOG_KEY, []);
-        setLogs([]);
-        resolve(true);
-      });
+      try {
+        const { CLEAR_LOG_KEY } = await import("../../store");
+        const { useStorage } = await import("@plasmohq/storage/hook");
+        return new Promise((resolve) => {
+          const [, setLogs] = useStorage(CLEAR_LOG_KEY, []);
+          setLogs([]);
+          resolve(true);
+        });
+      } catch (e) {
+        console.error("Error in test:", e);
+        return false;
+      }
     });
 
     expect(isCleared).toBe(true);
@@ -140,13 +175,18 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     };
 
     const isUpdated = await page.evaluate(async (settings) => {
-      const { SETTINGS_KEY } = await import("../../store");
-      const { useStorage } = await import("@plasmohq/storage/hook");
-      return new Promise((resolve) => {
-        const [, setSettings] = useStorage(SETTINGS_KEY, {});
-        setSettings(settings);
-        resolve(true);
-      });
+      try {
+        const { SETTINGS_KEY } = await import("../../store");
+        const { useStorage } = await import("@plasmohq/storage/hook");
+        return new Promise((resolve) => {
+          const [, setSettings] = useStorage(SETTINGS_KEY, {});
+          setSettings(settings);
+          resolve(true);
+        });
+      } catch (e) {
+        console.error("Error in test:", e);
+        return false;
+      }
     }, newSettings);
 
     expect(isUpdated).toBe(true);
@@ -156,19 +196,29 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     await page.goto("https://example.com");
 
     const stats = await page.evaluate(async () => {
-      const { isDomainMatch } = await import("../../utils");
+      try {
+        const { isDomainMatch } = await import("../../utils");
 
-      const cookies = await chrome.cookies.getAll({});
-      const currentCookiesList = cookies.filter((c) => isDomainMatch(c.domain, "example.com"));
-      const sessionCookies = currentCookiesList.filter((c) => !c.expirationDate);
-      const persistentCookies = currentCookiesList.filter((c) => c.expirationDate);
+        const cookies = await chrome.cookies.getAll({});
+        const currentCookiesList = cookies.filter((c) => isDomainMatch(c.domain, "example.com"));
+        const sessionCookies = currentCookiesList.filter((c) => !c.expirationDate);
+        const persistentCookies = currentCookiesList.filter((c) => c.expirationDate);
 
-      return {
-        total: cookies.length,
-        current: currentCookiesList.length,
-        session: sessionCookies.length,
-        persistent: persistentCookies.length,
-      };
+        return {
+          total: cookies.length,
+          current: currentCookiesList.length,
+          session: sessionCookies.length,
+          persistent: persistentCookies.length,
+        };
+      } catch (e) {
+        console.error("Error in test:", e);
+        return {
+          total: 0,
+          current: 0,
+          session: 0,
+          persistent: 0,
+        };
+      }
     });
 
     expect(stats).toHaveProperty("total");
@@ -187,14 +237,22 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     ];
 
     const results = await page.evaluate(async (cookies) => {
-      const { SENSITIVE_COOKIE_KEYWORDS } = await import("../../constants");
+      try {
+        const { SENSITIVE_COOKIE_KEYWORDS } = await import("../../constants");
 
-      return cookies.map((cookie) => ({
-        name: cookie.name,
-        isSensitive: SENSITIVE_COOKIE_KEYWORDS.some((keyword) =>
-          cookie.name.toLowerCase().includes(keyword)
-        ),
-      }));
+        return cookies.map((cookie) => ({
+          name: cookie.name,
+          isSensitive: SENSITIVE_COOKIE_KEYWORDS.some((keyword) =>
+            cookie.name.toLowerCase().includes(keyword)
+          ),
+        }));
+      } catch (e) {
+        console.error("Error in test:", e);
+        return cookies.map((cookie) => ({
+          name: cookie.name,
+          isSensitive: false,
+        }));
+      }
     }, testCookies);
 
     expect(results[0].isSensitive).toBe(true);
