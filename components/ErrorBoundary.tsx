@@ -6,17 +6,17 @@ interface Props {
 
 interface State {
   hasError: boolean;
-  error: Error | null;
+}
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    return { hasError: true };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -31,7 +31,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <p>抱歉，扩展遇到了一个错误。请尝试重新加载。</p>
           <button
             onClick={() => {
-              this.setState({ hasError: false, error: null });
+              this.setState({ hasError: false });
             }}
           >
             重试
