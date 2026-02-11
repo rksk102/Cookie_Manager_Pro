@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { CookieClearType } from "~types";
+import type { CookieClearType } from "../../types";
 
 test.describe("Cookie Manager Pro - 核心功能测试", () => {
   test.beforeEach(async ({ context }) => {
@@ -15,7 +15,7 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     const domain = "example.com";
 
     const isAdded = await page.evaluate(async (domain) => {
-      const { storage } = await import("~store");
+      const { storage } = await import("../../store");
       const whitelist = await storage.get("whitelist");
       const currentList = whitelist || [];
       await storage.set("whitelist", [...currentList, domain]);
@@ -31,7 +31,7 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     const domain = "example.com";
 
     const isAdded = await page.evaluate(async (domain) => {
-      const { storage } = await import("~store");
+      const { storage } = await import("../../store");
       const blacklist = await storage.get("blacklist");
       const currentList = blacklist || [];
       await storage.set("blacklist", [...currentList, domain]);
@@ -48,12 +48,12 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     expect(cookiesBefore.length).toBeGreaterThanOrEqual(0);
 
     const clearedCount = await page.evaluate(async () => {
-      const { performCleanupWithFilter } = await import("~utils/cleanup");
-      const { isDomainMatch } = await import("~utils");
+      const { performCleanupWithFilter } = await import("../../utils/cleanup");
+      const { isDomainMatch } = await import("../../utils");
 
       const result = await performCleanupWithFilter(
         (domain) => isDomainMatch(domain, "example.com"),
-        { clearType: CookieClearType.ALL }
+        { clearType: "all" as CookieClearType }
       );
 
       return result.count;
@@ -64,15 +64,14 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
 
   test("应该能够清除所有 Cookie（白名单除外）", async ({ page, context }) => {
     await page.goto("https://example.com");
-
     const cookiesBefore = await context.cookies();
     expect(cookiesBefore.length).toBeGreaterThanOrEqual(0);
 
     const clearedCount = await page.evaluate(async () => {
-      const { performCleanupWithFilter } = await import("~utils/cleanup");
+      const { performCleanupWithFilter } = await import("../../utils/cleanup");
 
       const result = await performCleanupWithFilter(() => true, {
-        clearType: CookieClearType.ALL,
+        clearType: "all" as CookieClearType,
       });
 
       return result.count;
@@ -85,8 +84,7 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     await page.goto("https://example.com");
 
     const clearedCount = await page.evaluate(async () => {
-      const { cleanupExpiredCookies } = await import("~utils/cleanup");
-
+      const { cleanupExpiredCookies } = await import("../../utils/cleanup");
       const count = await cleanupExpiredCookies();
       return count;
     });
@@ -106,7 +104,7 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     };
 
     const isLogged = await page.evaluate(async (entry) => {
-      const { storage } = await import("~store");
+      const { storage } = await import("../../store");
       const logs = (await storage.get("clearLog")) || [];
       await storage.set("clearLog", [entry, ...logs]);
       return true;
@@ -119,9 +117,8 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     await page.goto("https://example.com");
 
     const isCleared = await page.evaluate(async () => {
-      const { CLEAR_LOG_KEY } = await import("~store");
+      const { CLEAR_LOG_KEY } = await import("../../store");
       const { useStorage } = await import("@plasmohq/storage/hook");
-
       return new Promise((resolve) => {
         const [, setLogs] = useStorage(CLEAR_LOG_KEY, []);
         setLogs([]);
@@ -150,9 +147,8 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     };
 
     const isUpdated = await page.evaluate(async (settings) => {
-      const { SETTINGS_KEY } = await import("~store");
+      const { SETTINGS_KEY } = await import("../../store");
       const { useStorage } = await import("@plasmohq/storage/hook");
-
       return new Promise((resolve) => {
         const [, setSettings] = useStorage(SETTINGS_KEY, {});
         setSettings(settings);
@@ -167,10 +163,12 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     await page.goto("https://example.com");
 
     const stats = await page.evaluate(async () => {
-      const { isDomainMatch } = await import("~utils");
+      const { isDomainMatch } = await import("../../utils");
 
       const cookies = await chrome.cookies.getAll({});
-      const currentCookiesList = cookies.filter((c) => isDomainMatch(c.domain, "example.com"));
+      const currentCookiesList = cookies.filter((c) =>
+        isDomainMatch(c.domain, "example.com")
+      );
       const sessionCookies = currentCookiesList.filter((c) => !c.expirationDate);
       const persistentCookies = currentCookiesList.filter((c) => c.expirationDate);
 
@@ -198,7 +196,7 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
     ];
 
     const results = await page.evaluate(async (cookies) => {
-      const { SENSITIVE_COOKIE_KEYWORDS } = await import("~constants");
+      const { SENSITIVE_COOKIE_KEYWORDS } = await import("../../constants");
 
       return cookies.map((cookie) => ({
         name: cookie.name,

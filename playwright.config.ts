@@ -24,7 +24,6 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
-        // Launch Chrome with the extension loaded
         launchOptions: {
           args: [
             `--disable-extensions-except=${extensionPath}`,
