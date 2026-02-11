@@ -166,9 +166,7 @@ test.describe("Cookie Manager Pro - 核心功能测试", () => {
       const { isDomainMatch } = await import("../../utils");
 
       const cookies = await chrome.cookies.getAll({});
-      const currentCookiesList = cookies.filter((c) =>
-        isDomainMatch(c.domain, "example.com")
-      );
+      const currentCookiesList = cookies.filter((c) => isDomainMatch(c.domain, "example.com"));
       const sessionCookies = currentCookiesList.filter((c) => !c.expirationDate);
       const persistentCookies = currentCookiesList.filter((c) => c.expirationDate);
 
