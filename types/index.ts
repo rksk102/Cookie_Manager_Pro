@@ -19,44 +19,6 @@ export interface Cookie {
   storeId?: string;
 }
 
-export const normalizeDomain = (domain: string): string => {
-  return domain.replace(/^\./, "").toLowerCase();
-};
-
-export const isDomainMatch = (cookieDomain: string, targetDomain: string): boolean => {
-  const normalizedCookie = normalizeDomain(cookieDomain);
-  const normalizedTarget = normalizeDomain(targetDomain);
-
-  if (normalizedCookie === normalizedTarget) return true;
-  if (normalizedTarget.endsWith("." + normalizedCookie)) return true;
-  if (normalizedCookie.endsWith("." + normalizedTarget)) return true;
-
-  return false;
-};
-
-export const isInList = (domain: string, list: string[]): boolean => {
-  const normalizedDomain = normalizeDomain(domain);
-  return list.some((item) => {
-    const normalizedItem = normalizeDomain(item);
-    return (
-      normalizedDomain === normalizedItem ||
-      normalizedDomain.endsWith("." + normalizedItem) ||
-      normalizedItem.endsWith("." + normalizedDomain)
-    );
-  });
-};
-
-export const getCookieTypeName = (type: string): string => {
-  switch (type) {
-    case "session":
-      return "会话Cookie";
-    case "persistent":
-      return "持久Cookie";
-    default:
-      return "所有Cookie";
-  }
-};
-
 export interface CookieStats {
   total: number;
   current: number;
@@ -107,7 +69,7 @@ export interface Settings {
   cleanupExpiredCookies: boolean;
 }
 
-export interface ClearLog {
+export interface ClearLogEntry {
   id: string;
   domain: string;
   cookieType: CookieClearType;

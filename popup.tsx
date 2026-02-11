@@ -4,6 +4,7 @@ import { DomainManager } from "~components/DomainManager";
 import { Settings } from "~components/Settings";
 import { ClearLog } from "~components/ClearLog";
 import { CookieList } from "~components/CookieList";
+import { ErrorBoundary } from "~components/ErrorBoundary";
 import {
   WHITELIST_KEY,
   BLACKLIST_KEY,
@@ -16,18 +17,17 @@ import type {
   DomainList,
   CookieStats,
   Settings as SettingsType,
-  ClearLog as ClearLogType,
+  ClearLogEntry,
   Cookie,
 } from "~types";
+import { CookieClearType, ThemeMode, LogRetention, ModeType } from "~types";
+import { isDomainMatch, isInList } from "~utils";
 import {
-  CookieClearType,
-  ThemeMode,
-  LogRetention,
-  ModeType,
-  isDomainMatch,
-  isInList,
-} from "~types";
-import { clearBrowserData, clearCookies as clearCookiesUtil } from "~utils";
+  performCleanupWithFilter,
+  cleanupExpiredCookies as cleanupExpiredCookiesUtil,
+} from "~utils/cleanup";
+import { performCleanup } from "~utils/cleanup";
+import { MESSAGE_DURATION } from "~constants";
 import "./style.css";
 
 function IndexPopup() {
@@ -46,7 +46,7 @@ function IndexPopup() {
   const [whitelist, setWhitelist] = useStorage<DomainList>(WHITELIST_KEY, []);
   const [blacklist, setBlacklist] = useStorage<DomainList>(BLACKLIST_KEY, []);
   const [settings] = useStorage<SettingsType>(SETTINGS_KEY, DEFAULT_SETTINGS);
-  const [logs, setLogs] = useStorage<ClearLogType[]>(CLEAR_LOG_KEY, []);
+  const [_logs, setLogs] = useStorage<ClearLogEntry[]>(CLEAR_LOG_KEY, []);
 
   const applyTheme = useCallback(() => {
     const themeMode = settings.themeMode;
@@ -60,18 +60,20 @@ function IndexPopup() {
 
   const showMessage = useCallback((text: string, isError = false) => {
     setMessage({ text, isError, visible: true });
-    setTimeout(() => setMessage((prev) => ({ ...prev, visible: false })), 3000);
+    setTimeout(() => setMessage((prev) => ({ ...prev, visible: false })), MESSAGE_DURATION);
   }, []);
 
   const updateStats = useCallback(async () => {
     try {
-      const cookies = await chrome.cookies.getAll({});
+      const cookies = await chrome.cookies.getAll({ domain: currentDomain });
       const currentCookiesList = cookies.filter((c) => isDomainMatch(c.domain, currentDomain));
       const sessionCookies = currentCookiesList.filter((c) => !c.expirationDate);
       const persistentCookies = currentCookiesList.filter((c) => c.expirationDate);
 
+      const allCookies = await chrome.cookies.getAll({});
+
       setStats({
-        total: cookies.length,
+        total: allCookies.length,
         current: currentCookiesList.length,
         session: sessionCookies.length,
         persistent: persistentCookies.length,
@@ -97,7 +99,7 @@ function IndexPopup() {
 
   const addLog = useCallback(
     (domain: string, cookieType: CookieClearType, count: number) => {
-      const newLog: ClearLogType = {
+      const newLog: ClearLogEntry = {
         id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         domain,
         cookieType,
@@ -106,16 +108,19 @@ function IndexPopup() {
       };
 
       if (settings.logRetention === LogRetention.FOREVER) {
-        setLogs([newLog, ...logs]);
+        setLogs((prev) => [newLog, ...(prev ?? [])]);
         return;
       }
 
       const now = Date.now();
       const retentionMs = LOG_RETENTION_MAP[settings.logRetention] || 7 * 24 * 60 * 60 * 1000;
-      const filteredLogs = logs.filter((log) => now - log.timestamp <= retentionMs);
-      setLogs([newLog, ...filteredLogs]);
+      setLogs((prev) => {
+        const currentPrev = prev ?? [];
+        const filteredLogs = currentPrev.filter((log) => now - log.timestamp <= retentionMs);
+        return [newLog, ...filteredLogs];
+      });
     },
-    [settings.logRetention, logs, setLogs]
+    [settings.logRetention, setLogs]
   );
 
   const buildDomainString = useCallback(
@@ -131,41 +136,21 @@ function IndexPopup() {
     [currentDomain]
   );
 
-  const clearBrowserDataSafely = useCallback(
-    async (clearedDomains: Set<string>) => {
+  const clearCookies = useCallback(
+    async (filterFn: (domain: string) => boolean, successMsg: string, logType: CookieClearType) => {
       try {
-        await clearBrowserData(clearedDomains, {
+        const result = await performCleanupWithFilter(filterFn, {
+          clearType: logType,
           clearCache: settings.clearCache,
           clearLocalStorage: settings.clearLocalStorage,
           clearIndexedDB: settings.clearIndexedDB,
         });
-      } catch (e) {
-        console.error("Failed to clear browser data:", e);
-      }
-    },
-    [settings.clearCache, settings.clearLocalStorage, settings.clearIndexedDB]
-  );
-
-  const clearCookies = useCallback(
-    async (filterFn: (domain: string) => boolean, successMsg: string, logType: CookieClearType) => {
-      try {
-        const isInWhitelist = settings.mode === ModeType.WHITELIST;
-        const domainList = isInWhitelist ? whitelist : blacklist;
-        const shouldIncludeDomain = isInWhitelist
-          ? (domain: string) => !isInList(domain, domainList)
-          : (domain: string) => isInList(domain, domainList);
-
-        const result = await clearCookiesUtil({
-          filterFn: (domain) => filterFn(domain) && shouldIncludeDomain(domain),
-          clearType: logType,
-        });
 
         if (result.count > 0) {
-          const domainStr = buildDomainString(result.clearedDomains, successMsg);
+          const domainStr = buildDomainString(new Set(result.clearedDomains), successMsg);
           addLog(domainStr, logType, result.count);
         }
 
-        await clearBrowserDataSafely(result.clearedDomains);
         showMessage(`${successMsg} ${result.count} 个Cookie`);
         await updateStats();
       } catch (e) {
@@ -174,12 +159,11 @@ function IndexPopup() {
       }
     },
     [
-      settings.mode,
-      whitelist,
-      blacklist,
+      settings.clearCache,
+      settings.clearLocalStorage,
+      settings.clearIndexedDB,
       buildDomainString,
       addLog,
-      clearBrowserDataSafely,
       showMessage,
       updateStats,
     ]
@@ -191,29 +175,13 @@ function IndexPopup() {
       if (tab?.url) {
         try {
           const url = new URL(tab.url);
-          const domain = url.hostname;
-
-          if (settings.mode === ModeType.WHITELIST && isInList(domain, whitelist)) {
-            return;
-          }
-          if (settings.mode === ModeType.BLACKLIST && !isInList(domain, blacklist)) {
-            return;
-          }
-
-          const result = await clearCookiesUtil({
-            filterFn: (cookieDomain) => isDomainMatch(cookieDomain, domain),
+          const result = await performCleanup({
+            domain: url.hostname,
             clearType: settings.clearType,
+            clearCache: settings.clearCache,
           });
 
-          try {
-            await clearBrowserData(result.clearedDomains, {
-              clearCache: settings.clearCache,
-            });
-          } catch (e) {
-            console.error("Failed to clear cache:", e);
-          }
-
-          if (result.count > 0) {
+          if (result && result.count > 0) {
             addLog("启动清理", settings.clearType, result.count);
           }
         } catch (e) {
@@ -223,25 +191,11 @@ function IndexPopup() {
     } catch (e) {
       console.error("Failed to cleanup on startup:", e);
     }
-  }, [settings.mode, settings.clearCache, whitelist, blacklist, settings.clearType, addLog]);
+  }, [settings.clearType, settings.clearCache, addLog]);
 
   const cleanupExpiredCookies = useCallback(async () => {
     try {
-      const cookies = await chrome.cookies.getAll({});
-      const now = Date.now();
-      let count = 0;
-
-      for (const cookie of cookies) {
-        try {
-          if (cookie.expirationDate && cookie.expirationDate * 1000 < now) {
-            const url = `http${cookie.secure ? "s" : ""}://${cookie.domain}${cookie.path}`;
-            await chrome.cookies.remove({ url, name: cookie.name });
-            count++;
-          }
-        } catch (e) {
-          console.error(`Failed to clear expired cookie ${cookie.name}:`, e);
-        }
-      }
+      const count = await cleanupExpiredCookiesUtil();
 
       if (count > 0) {
         addLog("过期 Cookie 清理", CookieClearType.ALL, count);
@@ -292,6 +246,15 @@ function IndexPopup() {
   }, [clearCookies, settings.clearType]);
 
   useEffect(() => {
+    const cookieListener = () => updateStats();
+    chrome.cookies.onChanged.addListener(cookieListener);
+
+    return () => {
+      chrome.cookies.onChanged.removeListener(cookieListener);
+    };
+  }, [updateStats]);
+
+  useEffect(() => {
     async function init() {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tab?.url) {
@@ -314,16 +277,7 @@ function IndexPopup() {
       }
     }
     init();
-
-    const cookieListener = () => updateStats();
-    chrome.cookies.onChanged.addListener(cookieListener);
-
-    return () => {
-      chrome.cookies.onChanged.removeListener(cookieListener);
-    };
   }, [
-    currentDomain,
-    activeTab,
     settings.mode,
     settings.cleanupOnStartup,
     settings.cleanupExpiredCookies,
@@ -334,139 +288,143 @@ function IndexPopup() {
   ]);
 
   return (
-    <div className={`container theme-${theme}`}>
-      <header>
-        <h1>🍪 Cookie Manager Pro</h1>
-      </header>
+    <ErrorBoundary>
+      <div className={`container theme-${theme}`}>
+        <header>
+          <h1>🍪 Cookie Manager Pro</h1>
+        </header>
 
-      <div className="tabs">
-        {[
-          { id: "manage", label: "管理", icon: "🏠" },
-          {
-            id: settings.mode === ModeType.WHITELIST ? "whitelist" : "blacklist",
-            label: settings.mode === ModeType.WHITELIST ? "白名单" : "黑名单",
-            icon: "📝",
-          },
-          { id: "settings", label: "设置", icon: "⚙️" },
-          { id: "log", label: "日志", icon: "📋" },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            <span className="tab-icon">{tab.icon}</span>
-            <span>{tab.label}</span>
-          </button>
-        ))}
-      </div>
+        <div className="tabs">
+          {[
+            { id: "manage", label: "管理", icon: "🏠" },
+            {
+              id: settings.mode === ModeType.WHITELIST ? "whitelist" : "blacklist",
+              label: settings.mode === ModeType.WHITELIST ? "白名单" : "黑名单",
+              icon: "📝",
+            },
+            { id: "settings", label: "设置", icon: "⚙️" },
+            { id: "log", label: "日志", icon: "📋" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <span className="tab-icon">{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
 
-      {activeTab === "manage" && (
-        <div className="tab-content">
-          <div className="section">
-            <h3>
-              <span className="section-icon">🌐</span>当前网站
-            </h3>
-            <div className="domain-info">{currentDomain || "无法获取域名"}</div>
-          </div>
+        {activeTab === "manage" && (
+          <div className="tab-content">
+            <div className="section">
+              <h3>
+                <span className="section-icon">🌐</span>当前网站
+              </h3>
+              <div className="domain-info">{currentDomain || "无法获取域名"}</div>
+            </div>
 
-          <div className="section">
-            <h3>
-              <span className="section-icon">📊</span>Cookie统计
-            </h3>
-            <div className="stats">
-              <div className="stat-item">
-                <span className="stat-label">总数</span>
-                <span className="stat-value">{stats.total}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">当前网站</span>
-                <span className="stat-value">{stats.current}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">会话</span>
-                <span className="stat-value">{stats.session}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">持久</span>
-                <span className="stat-value">{stats.persistent}</span>
+            <div className="section">
+              <h3>
+                <span className="section-icon">📊</span>Cookie统计
+              </h3>
+              <div className="stats">
+                <div className="stat-item">
+                  <span className="stat-label">总数</span>
+                  <span className="stat-value">{stats.total}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">当前网站</span>
+                  <span className="stat-value">{stats.current}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">会话</span>
+                  <span className="stat-value">{stats.session}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">持久</span>
+                  <span className="stat-value">{stats.persistent}</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="section">
-            <h3>
-              <span className="section-icon">⚡</span>快速操作
-            </h3>
-            <div className="button-group">
-              <button onClick={quickAddToWhitelist} className="btn btn-success">
-                <span className="btn-icon">✓</span>添加到白名单
-              </button>
-              <button onClick={quickAddToBlacklist} className="btn btn-secondary">
-                <span className="btn-icon">✗</span>添加到黑名单
-              </button>
-              <button onClick={quickClearCurrent} className="btn btn-warning">
-                <span className="btn-icon">🧹</span>清除当前网站
-              </button>
-              <button onClick={quickClearAll} className="btn btn-danger">
-                <span className="btn-icon">🔥</span>清除所有Cookie
-              </button>
+            <div className="section">
+              <h3>
+                <span className="section-icon">⚡</span>快速操作
+              </h3>
+              <div className="button-group">
+                <button onClick={quickAddToWhitelist} className="btn btn-success">
+                  <span className="btn-icon">✓</span>添加到白名单
+                </button>
+                <button onClick={quickAddToBlacklist} className="btn btn-secondary">
+                  <span className="btn-icon">✗</span>添加到黑名单
+                </button>
+                <button onClick={quickClearCurrent} className="btn btn-warning">
+                  <span className="btn-icon">🧹</span>清除当前网站
+                </button>
+                <button onClick={quickClearAll} className="btn btn-danger">
+                  <span className="btn-icon">🔥</span>清除所有Cookie
+                </button>
+              </div>
             </div>
+
+            <CookieList cookies={currentCookies} />
           </div>
+        )}
 
-          <CookieList cookies={currentCookies} />
+        {activeTab === "whitelist" && (
+          <div className="tab-content">
+            <DomainManager type="whitelist" currentDomain={currentDomain} onMessage={showMessage} />
+          </div>
+        )}
+
+        {activeTab === "blacklist" && (
+          <div className="tab-content">
+            <DomainManager
+              type="blacklist"
+              currentDomain={currentDomain}
+              onMessage={showMessage}
+              onClearBlacklist={async () => {
+                const result = await performCleanupWithFilter(
+                  (domain) => isInList(domain, blacklist),
+                  {
+                    clearType: CookieClearType.ALL,
+                  }
+                );
+
+                if (result.count > 0) {
+                  const domainStr = buildDomainString(new Set(result.clearedDomains), "黑名单网站");
+                  addLog(domainStr, CookieClearType.ALL, result.count);
+                  showMessage(`已清除黑名单网站的 ${result.count} 个Cookie`);
+                  updateStats();
+                } else {
+                  showMessage("黑名单网站暂无Cookie可清除");
+                }
+              }}
+            />
+          </div>
+        )}
+
+        {activeTab === "settings" && (
+          <div className="tab-content">
+            <Settings onMessage={showMessage} />
+          </div>
+        )}
+
+        {activeTab === "log" && (
+          <div className="tab-content">
+            <ClearLog onMessage={showMessage} />
+          </div>
+        )}
+
+        <div
+          className={`message ${message.isError ? "error" : ""} ${message.visible ? "visible" : ""}`}
+        >
+          {message.text}
         </div>
-      )}
-
-      {activeTab === "whitelist" && (
-        <div className="tab-content">
-          <DomainManager type="whitelist" currentDomain={currentDomain} onMessage={showMessage} />
-        </div>
-      )}
-
-      {activeTab === "blacklist" && (
-        <div className="tab-content">
-          <DomainManager
-            type="blacklist"
-            currentDomain={currentDomain}
-            onMessage={showMessage}
-            onClearBlacklist={async () => {
-              const result = await clearCookiesUtil({
-                filterFn: (domain) => isInList(domain, blacklist),
-                clearType: CookieClearType.ALL,
-              });
-
-              if (result.count > 0) {
-                const domainStr = buildDomainString(result.clearedDomains, "黑名单网站");
-                addLog(domainStr, CookieClearType.ALL, result.count);
-                showMessage(`已清除黑名单网站的 ${result.count} 个Cookie`);
-                updateStats();
-              } else {
-                showMessage("黑名单网站暂无Cookie可清除");
-              }
-            }}
-          />
-        </div>
-      )}
-
-      {activeTab === "settings" && (
-        <div className="tab-content">
-          <Settings onMessage={showMessage} />
-        </div>
-      )}
-
-      {activeTab === "log" && (
-        <div className="tab-content">
-          <ClearLog onMessage={showMessage} />
-        </div>
-      )}
-
-      <div
-        className={`message ${message.isError ? "error" : ""} ${message.visible ? "visible" : ""}`}
-      >
-        {message.text}
       </div>
-    </div>
+    </ErrorBoundary>
   );
 }
 

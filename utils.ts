@@ -1,4 +1,44 @@
-import type { CookieClearType } from "~types";
+import { CookieClearType } from "~types";
+
+export { CookieClearType };
+
+export const normalizeDomain = (domain: string): string => {
+  return domain.replace(/^\./, "").toLowerCase();
+};
+
+export const isDomainMatch = (cookieDomain: string, targetDomain: string): boolean => {
+  const normalizedCookie = normalizeDomain(cookieDomain);
+  const normalizedTarget = normalizeDomain(targetDomain);
+
+  if (normalizedCookie === normalizedTarget) return true;
+  if (normalizedTarget.endsWith("." + normalizedCookie)) return true;
+  if (normalizedCookie.endsWith("." + normalizedTarget)) return true;
+
+  return false;
+};
+
+export const isInList = (domain: string, list: string[]): boolean => {
+  const normalizedDomain = normalizeDomain(domain);
+  return list.some((item) => {
+    const normalizedItem = normalizeDomain(item);
+    return (
+      normalizedDomain === normalizedItem ||
+      normalizedDomain.endsWith("." + normalizedItem) ||
+      normalizedItem.endsWith("." + normalizedDomain)
+    );
+  });
+};
+
+export const getCookieTypeName = (type: string): string => {
+  switch (type) {
+    case "session":
+      return "会话Cookie";
+    case "persistent":
+      return "持久Cookie";
+    default:
+      return "所有Cookie";
+  }
+};
 
 export const buildOrigins = (domains: Set<string>): string[] => {
   const origins: string[] = [];
@@ -24,8 +64,8 @@ const shouldClearCookieByType = (
   clearType: CookieClearType
 ): boolean => {
   const isSession = !cookie.expirationDate;
-  if (clearType === "session" && !isSession) return false;
-  if (clearType === "persistent" && isSession) return false;
+  if (clearType === CookieClearType.SESSION && !isSession) return false;
+  if (clearType === CookieClearType.PERSISTENT && isSession) return false;
   return true;
 };
 

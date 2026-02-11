@@ -58,7 +58,10 @@ const createMockCookiesWithTypes = (): chrome.cookies.Cookie[] => [
   },
 ];
 
-const mockRemoveResponse = { name: "test", url: "http://example.com" } as any;
+const mockRemoveResponse = {
+  name: "test",
+  url: "http://example.com",
+} as chrome.cookies.RemoveDetails;
 
 describe("buildOrigins", () => {
   it("should build origins for single domain", () => {

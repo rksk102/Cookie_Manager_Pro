@@ -8,7 +8,7 @@ interface Props {
 
 export const CheckboxGroup = ({ options }: Props) => {
   return (
-    <div className="radio-group">
+    <div className="checkbox-group">
       {options.map((option) => (
         <label key={option.label} className="checkbox-label">
           <input

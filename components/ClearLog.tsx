@@ -1,7 +1,8 @@
 import { useStorage } from "@plasmohq/storage/hook";
 import { CLEAR_LOG_KEY, SETTINGS_KEY, DEFAULT_SETTINGS, LOG_RETENTION_MAP } from "~store";
-import type { ClearLog as ClearLogType, Settings } from "~types";
-import { LogRetention, getCookieTypeName } from "~types";
+import type { ClearLogEntry, Settings } from "~types";
+import { LogRetention } from "~types";
+import { getCookieTypeName } from "~utils";
 import { useMemo } from "react";
 
 interface Props {
@@ -9,7 +10,7 @@ interface Props {
 }
 
 export const ClearLog = ({ onMessage }: Props) => {
-  const [logs, setLogs] = useStorage<ClearLogType[]>(CLEAR_LOG_KEY, []);
+  const [logs, setLogs] = useStorage<ClearLogEntry[]>(CLEAR_LOG_KEY, []);
   const [settings] = useStorage<Settings>(SETTINGS_KEY, DEFAULT_SETTINGS);
 
   const formatTime = (timestamp: number) => {
@@ -38,13 +39,16 @@ export const ClearLog = ({ onMessage }: Props) => {
 
     const now = Date.now();
     const retentionMs = LOG_RETENTION_MAP[settings.logRetention] || 7 * 24 * 60 * 60 * 1000;
-    const filteredLogs = logs.filter((log) => now - log.timestamp <= retentionMs);
-    if (filteredLogs.length < logs.length) {
-      setLogs(filteredLogs);
-      onMessage(`已清除 ${logs.length - filteredLogs.length} 条过期日志`);
-    } else {
-      onMessage("没有需要清理的过期日志");
-    }
+    setLogs((prev) => {
+      const currentPrev = prev ?? [];
+      const filteredLogs = currentPrev.filter((log) => now - log.timestamp <= retentionMs);
+      if (filteredLogs.length < currentPrev.length) {
+        onMessage(`已清除 ${currentPrev.length - filteredLogs.length} 条过期日志`);
+      } else {
+        onMessage("没有需要清理的过期日志");
+      }
+      return filteredLogs;
+    });
   };
 
   const sortedLogs = useMemo(() => [...logs].sort((a, b) => b.timestamp - a.timestamp), [logs]);
