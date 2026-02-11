@@ -2,13 +2,6 @@ import { test, expect } from "@playwright/test";
 import type { CookieClearType } from "../../types";
 
 test.describe("Cookie Manager Pro - 核心功能测试", () => {
-  test.beforeEach(async ({ context }) => {
-    const extensionPath = process.env.EXTENSION_PATH || "build/chrome-mv3-prod";
-    await context.addInitScript({
-      path: extensionPath,
-    });
-  });
-
   test("应该能够添加域名到白名单", async ({ page }) => {
     await page.goto("https://example.com");
 
