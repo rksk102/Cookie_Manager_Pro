@@ -58,3 +58,4 @@ yarn.lock
 .trae
 .trae/documents
 .trae/rules
+NON_CORE_FILES.md

@@ -56,7 +56,7 @@ jobs:
       - name: Run unit tests
         run: |
           if [ -f "package.json" ] && grep -q "vitest" package.json; then
-            npm run test
+            npm run test:coverage
           else
             echo "ℹ️ Vitest not configured, skipping unit tests"
           fi
