@@ -330,9 +330,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [build, e2e, security]
-    if: |
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true') ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true'
 
     steps:
       - name: Checkout repository
