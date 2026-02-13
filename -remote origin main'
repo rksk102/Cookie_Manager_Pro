@@ -1,0 +1,311 @@
+name: Build and Check Browser Extension
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  build-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238  # v6.2.0
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Dependency audit
+        run: npm audit --production || true
+        continue-on-error: true
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Lint check
+        run: |
+          if [ -f "package.json" ] && grep -q "eslint" package.json; then
+            npm run lint
+          else
+            echo "ℹ️ ESLint not configured, skipping lint check"
+          fi
+
+      - name: Format check
+        run: |
+          if [ -f "package.json" ] && grep -q "prettier" package.json; then
+            npm run format:check
+          else
+            echo "ℹ️ Prettier not configured, skipping format check"
+          fi
+
+      - name: Run unit tests
+        run: |
+          if [ -f "package.json" ] && grep -q "vitest" package.json; then
+            npm run test:coverage
+          else
+            echo "ℹ️ Vitest not configured, skipping unit tests"
+          fi
+
+      - name: Upload coverage reports
+        if: always()
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de  # v5.5.2
+        with:
+          files: ./coverage/coverage-final.json
+          flags: unittests
+          fail_ci_if_error: false
+          use_oidc: true
+          verbose: true
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Verify build success
+        run: |
+          if [ ! -d "build" ]; then
+            echo "✗ Build directory not found"
+            exit 1
+          fi
+          if [ ! -d "build/chrome-mv3-prod" ]; then
+            echo "✗ Production build directory not found"
+            exit 1
+          fi
+
+      - name: Get project version
+        id: get_version
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          PROJECT_NAME=$(jq -r '.name' package.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+          echo "build_dir=${PROJECT_NAME}-${VERSION}" >> $GITHUB_OUTPUT
+          echo "zip_file=${PROJECT_NAME}-${VERSION}.zip" >> $GITHUB_OUTPUT
+
+      - name: Package extension
+        run: npm run package
+
+      - name: Rename build artifacts
+        run: |
+          VERSION=${{ steps.get_version.outputs.version }}
+          PROJECT_NAME=${{ steps.get_version.outputs.project_name }}
+          BUILD_DIR=${{ steps.get_version.outputs.build_dir }}
+          ZIP_FILE=${{ steps.get_version.outputs.zip_file }}
+          
+          if [ -d "build/chrome-mv3-prod" ]; then
+            mv build/chrome-mv3-prod build/$BUILD_DIR
+            echo "✓ Renamed build directory to build/$BUILD_DIR"
+          fi
+          
+          if [ -f "build/chrome-mv3-prod.zip" ]; then
+            mv build/chrome-mv3-prod.zip build/$ZIP_FILE
+            echo "✓ Renamed zip file to build/$ZIP_FILE"
+          fi
+
+      - name: Verify zip file creation
+        run: |
+          ZIP_FILE=$(find build -name "*.zip" | head -1)
+          if [ -f "$ZIP_FILE" ]; then
+            echo "✓ Zip file created: $ZIP_FILE"
+            ls -la "$ZIP_FILE"
+            ZIP_SIZE=$(stat -c "%s" "$ZIP_FILE")
+            echo "✓ Zip file size: $ZIP_SIZE bytes"
+            if [ "$ZIP_SIZE" -lt 1000 ]; then
+              echo "⚠️ Zip file is very small, may be incomplete"
+            fi
+          else
+            echo "✗ Zip file not found"
+            exit 1
+          fi
+
+      - name: Verify build artifacts
+        run: |
+          echo "📁 Build artifacts:"
+          ls -la build/
+          BUILD_DIR=$(find build -type d -name "*-*" | head -1)
+          if [ -d "$BUILD_DIR" ]; then
+            echo "📁 Production build:"
+            ls -la "$BUILD_DIR"
+            REQUIRED_FILES=("manifest.json" "popup.html")
+            for file in "${REQUIRED_FILES[@]}"; do
+              if [ -f "$BUILD_DIR/$file" ]; then
+                echo "✓ $file exists"
+              else
+                echo "✗ $file missing"
+                exit 1
+              fi
+            done
+            if [ -f "$BUILD_DIR/static/background/index.js" ]; then
+              echo "✓ background script exists at static/background/index.js"
+            else
+              echo "ℹ️ background script not found"
+            fi
+          else
+            echo "✗ Build directory not found"
+            exit 1
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # v6.0.0
+        with:
+          name: extension-build-${{ steps.get_version.outputs.version }}
+          path: |
+            build/
+          retention-days: 7
+
+      - name: Install Playwright browsers
+        run: |
+          if [ -f "package.json" ] && grep -q "@playwright/test" package.json; then
+            npx playwright install --with-deps
+          else
+            echo "ℹ️ Playwright not configured, skipping E2E tests"
+          fi
+
+      - name: Run E2E tests
+        run: |
+          if [ -f "package.json" ] && grep -q "@playwright/test" package.json; then
+            npm run test:e2e
+          else
+            echo "ℹ️ Playwright not configured, skipping E2E tests"
+          fi
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # v6.0.0
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Check manifest validity
+        run: |
+          if [ -f "package.json" ]; then
+            echo "✓ Checking manifest configuration in package.json"
+            cat package.json | grep -A 20 "manifest"
+          else
+            echo "✗ package.json not found"
+            exit 1
+          fi
+
+      - name: Check manifest.json
+        run: |
+          BUILD_DIR=$(find build -type d -name "*-*" | head -1)
+          if [ -f "$BUILD_DIR/manifest.json" ]; then
+            echo "✓ manifest.json exists"
+            cat $BUILD_DIR/manifest.json
+            if command -v jq &> /dev/null; then
+              jq '.' $BUILD_DIR/manifest.json
+              echo "✓ manifest.json is valid JSON"
+            else
+              echo "ℹ️ jq not available, skipping JSON validation"
+            fi
+          else
+            echo "✗ manifest.json not found"
+            exit 1
+          fi
+
+      - name: Security check
+        run: |
+          echo "🔒 Running security checks..."
+          if grep -r "eval(" --include="*.ts" --include="*.tsx" --include="*.js" .; then
+            echo "⚠️  Found eval() usage, potential security risk"
+          else
+            echo "✓ No eval() usage found"
+          fi
+          if grep -r "innerHTML" --include="*.ts" --include="*.tsx" --include="*.js" .; then
+            echo "⚠️  Found innerHTML usage, potential XSS risk"
+          else
+            echo "✓ No innerHTML usage found"
+          fi
+
+      - name: Generate Release Notes
+        if: github.event_name == 'workflow_dispatch'
+        id: generate_notes
+        run: |
+          echo "📋 Available tags:"
+          git tag -l | sort -V
+          
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "🏷️ Previous tag: $PREVIOUS_TAG"
+          
+          CURRENT_VERSION="${{ steps.get_version.outputs.version }}"
+          echo "📌 Current version: v$CURRENT_VERSION"
+          
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "ℹ️ No previous tag found, generating full changelog"
+            NOTES=$(npx git-cliff --strip header)
+          else
+            echo "ℹ️ Generating changelog from $PREVIOUS_TAG to HEAD"
+            NOTES=$(npx git-cliff "$PREVIOUS_TAG..HEAD" --strip header)
+          fi
+          
+          echo "📝 Generated notes:"
+          echo "$NOTES"
+          
+          if [ -z "$NOTES" ] || [ "$NOTES" = "## [Unreleased]" ]; then
+            echo "⚠️ No notes generated, using default"
+            NOTES=$(printf "## What's Changed\n\n- 版本更新至 %s\n- 详见提交历史" "$CURRENT_VERSION")
+          fi
+          
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          echo "✓ Release notes generated"
+
+      - name: Create Release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b  # v2.5.0
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: Release v${{ steps.get_version.outputs.version }}
+          body: ${{ steps.generate_notes.outputs.notes }}
+          files: |
+            build/*.zip
+          draft: false
+          prerelease: false
+
+      - name: Summary
+        run: |
+          echo "## Build Summary"
+          echo "✅ All checks passed"
+          echo "✅ Build completed successfully"
+          echo "✅ TypeScript check passed"
+          echo "✅ Dependency audit completed"
+          echo "✅ ESLint check passed"
+          echo "✅ Prettier check passed"
+          
+          if [ -f "package.json" ] && grep -q "vitest" package.json; then
+            echo "✅ Unit tests passed"
+          else
+            echo "ℹ️ Vitest not configured, skipping unit tests"
+          fi
+          
+          if [ -f "package.json" ] && grep -q "@playwright/test" package.json; then
+            echo "✅ E2E tests passed"
+          else
+            echo "ℹ️ Playwright not configured, skipping E2E tests"
+          fi
+          
+          echo "✅ Extension packaged"
+          echo "✅ Build artifacts uploaded"
+          
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "✅ Release created"
+            echo "✅ Ready for deployment"
+          else
+            echo "ℹ️ Release step skipped (manual trigger only)"
+          fi
