@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from "react";
+import { Component, ErrorInfo, ReactNode } from "react";
 
 interface Props {
   children: ReactNode;
@@ -26,13 +26,16 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="error-boundary">
-          <h2>出错了</h2>
+        <div className="error-boundary" role="alert">
+          <h2>
+            <span aria-hidden="true">⚠️</span> 出错了
+          </h2>
           <p>{this.state.error?.message || "抱歉，扩展遇到了一个错误。请尝试重新加载。"}</p>
           <button
             onClick={() => {
               this.setState({ hasError: false, error: null });
             }}
+            aria-label="重试"
           >
             重试
           </button>

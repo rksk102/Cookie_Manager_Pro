@@ -291,10 +291,10 @@ function IndexPopup() {
     <ErrorBoundary>
       <div className={`container theme-${theme}`}>
         <header>
-          <h1>🍪 Cookie Manager Pro</h1>
+          <h1><span aria-hidden="true">🍪</span> Cookie Manager Pro</h1>
         </header>
 
-        <div className="tabs">
+        <div className="tabs" role="tablist">
           {[
             { id: "manage", label: "管理", icon: "🏠" },
             {
@@ -309,25 +309,29 @@ function IndexPopup() {
               key={tab.id}
               className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
               onClick={() => setActiveTab(tab.id)}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`${tab.id}-panel`}
+              tabIndex={activeTab === tab.id ? 0 : -1}
             >
-              <span className="tab-icon">{tab.icon}</span>
+              <span className="tab-icon" aria-hidden="true">{tab.icon}</span>
               <span>{tab.label}</span>
             </button>
           ))}
         </div>
 
         {activeTab === "manage" && (
-          <div className="tab-content">
+          <div className="tab-content" role="tabpanel" id="manage-panel">
             <div className="section">
               <h3>
-                <span className="section-icon">🌐</span>当前网站
+                <span className="section-icon" aria-hidden="true">🌐</span>当前网站
               </h3>
               <div className="domain-info">{currentDomain || "无法获取域名"}</div>
             </div>
 
             <div className="section">
               <h3>
-                <span className="section-icon">📊</span>Cookie统计
+                <span className="section-icon" aria-hidden="true">📊</span>Cookie统计
               </h3>
               <div className="stats">
                 <div className="stat-item">
@@ -351,20 +355,20 @@ function IndexPopup() {
 
             <div className="section">
               <h3>
-                <span className="section-icon">⚡</span>快速操作
+                <span className="section-icon" aria-hidden="true">⚡</span>快速操作
               </h3>
               <div className="button-group">
                 <button onClick={quickAddToWhitelist} className="btn btn-success">
-                  <span className="btn-icon">✓</span>添加到白名单
+                  <span className="btn-icon" aria-hidden="true">✓</span>添加到白名单
                 </button>
                 <button onClick={quickAddToBlacklist} className="btn btn-secondary">
-                  <span className="btn-icon">✗</span>添加到黑名单
+                  <span className="btn-icon" aria-hidden="true">✗</span>添加到黑名单
                 </button>
                 <button onClick={quickClearCurrent} className="btn btn-warning">
-                  <span className="btn-icon">🧹</span>清除当前网站
+                  <span className="btn-icon" aria-hidden="true">🧹</span>清除当前网站
                 </button>
                 <button onClick={quickClearAll} className="btn btn-danger">
-                  <span className="btn-icon">🔥</span>清除所有Cookie
+                  <span className="btn-icon" aria-hidden="true">🔥</span>清除所有Cookie
                 </button>
               </div>
             </div>
@@ -374,13 +378,13 @@ function IndexPopup() {
         )}
 
         {activeTab === "whitelist" && (
-          <div className="tab-content">
+          <div className="tab-content" role="tabpanel" id="whitelist-panel">
             <DomainManager type="whitelist" currentDomain={currentDomain} onMessage={showMessage} />
           </div>
         )}
 
         {activeTab === "blacklist" && (
-          <div className="tab-content">
+          <div className="tab-content" role="tabpanel" id="blacklist-panel">
             <DomainManager
               type="blacklist"
               currentDomain={currentDomain}
@@ -407,13 +411,13 @@ function IndexPopup() {
         )}
 
         {activeTab === "settings" && (
-          <div className="tab-content">
+          <div className="tab-content" role="tabpanel" id="settings-panel">
             <Settings onMessage={showMessage} />
           </div>
         )}
 
         {activeTab === "log" && (
-          <div className="tab-content">
+          <div className="tab-content" role="tabpanel" id="log-panel">
             <ClearLog onMessage={showMessage} />
           </div>
         )}

@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 interface Props<T extends string> {
   name: string;
   value: T;
@@ -8,9 +10,9 @@ interface Props<T extends string> {
   }>;
 }
 
-export const RadioGroup = <T extends string>({ name, value, onChange, options }: Props<T>) => {
+const RadioGroupInner = <T extends string>({ name, value, onChange, options }: Props<T>) => {
   return (
-    <div className="radio-group">
+    <div className="radio-group" role="radiogroup">
       {options.map((option) => (
         <label key={option.value} className="radio-label">
           <input
@@ -26,4 +28,6 @@ export const RadioGroup = <T extends string>({ name, value, onChange, options }:
   );
 };
 
-RadioGroup.displayName = "RadioGroup";
+RadioGroupInner.displayName = "RadioGroup";
+
+export const RadioGroup = memo(RadioGroupInner) as typeof RadioGroupInner;
