@@ -1,5 +1,5 @@
 import { Storage } from "@plasmohq/storage";
-import { WHITELIST_KEY, BLACKLIST_KEY, SETTINGS_KEY } from "~store";
+import { WHITELIST_KEY, BLACKLIST_KEY, SETTINGS_KEY, DEFAULT_SETTINGS } from "~store";
 import type { Settings } from "~types";
 import { performCleanup } from "~utils/cleanup";
 
@@ -8,6 +8,7 @@ const storage = new Storage();
 chrome.runtime.onInstalled.addListener(async () => {
   const whitelist = await storage.get(WHITELIST_KEY);
   const blacklist = await storage.get(BLACKLIST_KEY);
+  const settings = await storage.get(SETTINGS_KEY);
 
   if (whitelist === undefined) {
     await storage.set(WHITELIST_KEY, []);
@@ -15,6 +16,10 @@ chrome.runtime.onInstalled.addListener(async () => {
 
   if (blacklist === undefined) {
     await storage.set(BLACKLIST_KEY, []);
+  }
+
+  if (settings === undefined) {
+    await storage.set(SETTINGS_KEY, DEFAULT_SETTINGS);
   }
 });
 
