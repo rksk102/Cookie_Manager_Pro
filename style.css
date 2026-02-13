@@ -188,16 +188,20 @@
 }
 
 html {
-  width: 360px;
-  height: 500px;
+  width: 380px;
+  height: 520px;
+  min-width: 380px;
+  min-height: 520px;
   margin: 0;
   padding: 0;
   overflow: hidden;
 }
 
 body {
-  width: 360px;
-  height: 500px;
+  width: 380px;
+  height: 520px;
+  min-width: 380px;
+  min-height: 520px;
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -212,14 +216,18 @@ body {
 }
 
 #__plasmo {
-  width: 360px;
-  height: 500px;
+  width: 380px;
+  height: 520px;
+  min-width: 380px;
+  min-height: 520px;
   overflow: hidden;
 }
 
 .container {
-  width: 360px;
-  height: 500px;
+  width: 380px;
+  height: 520px;
+  min-width: 380px;
+  min-height: 520px;
   background: var(--bg-primary);
   display: flex;
   flex-direction: column;
@@ -306,7 +314,7 @@ header h1 {
 
 .tab-content {
   padding: var(--space-4);
-  height: calc(500px - 48px - 40px);
+  height: calc(520px - 48px - 40px);
   overflow-y: auto;
   background: var(--bg-secondary);
 }
@@ -1118,13 +1126,6 @@ header h1 {
 }
 
 @media (max-width: 360px) {
-  html,
-  body,
-  .container,
-  #__plasmo {
-    width: 100%;
-  }
-
   .button-group {
     grid-template-columns: 1fr;
   }
