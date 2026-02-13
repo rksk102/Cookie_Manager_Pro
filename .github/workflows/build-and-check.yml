@@ -34,42 +34,10 @@ env:
   EXTENSION_SIZE_LIMIT_MB: 10
 
 jobs:
-  setup:
-    name: Setup Dependencies
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    outputs:
-      cache-key: ${{ steps.cache.outputs.key }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6.0.2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6.2.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Get cache key
-        id: cache
-        run: echo "key=${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}" >> $GITHUB_OUTPUT
-
-      - name: Cache node modules
-        uses: actions/cache@v5.0.3
-        with:
-          path: node_modules
-          key: ${{ steps.cache.outputs.key }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
-
-      - name: Install dependencies
-        run: npm ci
-
   lint:
     name: Lint & Format Check
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [setup]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6.0.2
@@ -80,13 +48,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
-      - name: Restore node modules
-        uses: actions/cache@v5.0.3
-        with:
-          path: node_modules
-          key: ${{ needs.setup.outputs.cache-key }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
+      - name: Install dependencies
+        run: npm ci
 
       - name: TypeScript check
         run: npx tsc --noEmit
@@ -101,7 +64,6 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [setup]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6.0.2
@@ -114,13 +76,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
-      - name: Restore node modules
-        uses: actions/cache@v5.0.3
-        with:
-          path: node_modules
-          key: ${{ needs.setup.outputs.cache-key }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
+      - name: Install dependencies
+        run: npm ci
 
       - name: Run unit tests with coverage
         run: npm run test:coverage
@@ -144,7 +101,6 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [setup]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6.0.2
@@ -157,13 +113,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
-      - name: Restore node modules
-        uses: actions/cache@v5.0.3
-        with:
-          path: node_modules
-          key: ${{ needs.setup.outputs.cache-key }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
+      - name: Install dependencies
+        run: npm ci
 
       - name: Check for secrets leakage
         uses: trufflesecurity/trufflehog@main
@@ -200,12 +151,11 @@ jobs:
     name: Build Extension
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [setup, lint, test]
-    if: always() && needs.setup.result == 'success' && needs.lint.result == 'success' && needs.test.result == 'success'
+    needs: [lint, test]
+    if: always() && needs.lint.result == 'success' && needs.test.result == 'success'
     outputs:
       version: ${{ steps.version.outputs.version }}
       name: ${{ steps.version.outputs.name }}
-      size: ${{ steps.size.outputs.size }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6.0.2
@@ -216,13 +166,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
-      - name: Restore node modules
-        uses: actions/cache@v5.0.3
-        with:
-          path: node_modules
-          key: ${{ needs.setup.outputs.cache-key }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
+      - name: Install dependencies
+        run: npm ci
 
       - name: Cache Plasmo build
         uses: actions/cache@v5.0.3
@@ -246,14 +191,12 @@ jobs:
           echo "name=$NAME" >> $GITHUB_OUTPUT
 
       - name: Check extension size
-        id: size
         run: |
           BUILD_DIR="build/chrome-mv3-prod"
           if [ -d "$BUILD_DIR" ]; then
             SIZE_KB=$(du -sk "$BUILD_DIR" | cut -f1)
             SIZE_MB=$((SIZE_KB / 1024))
             echo "📊 Extension size: ${SIZE_MB}MB (${SIZE_KB}KB)"
-            echo "size=${SIZE_KB}KB" >> $GITHUB_OUTPUT
             
             if [ "$SIZE_MB" -gt "${{ env.EXTENSION_SIZE_LIMIT_MB }}" ]; then
               echo "❌ Extension size (${SIZE_MB}MB) exceeds limit (${{ env.EXTENSION_SIZE_LIMIT_MB }}MB)"
@@ -328,13 +271,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
-      - name: Restore node modules
-        uses: actions/cache@v5.0.3
-        with:
-          path: node_modules
-          key: ${{ needs.setup.outputs.cache-key }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
+      - name: Install dependencies
+        run: npm ci
 
       - name: Download build artifacts
         uses: actions/download-artifact@v5.0.0
