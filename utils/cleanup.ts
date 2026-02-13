@@ -1,5 +1,5 @@
 import { Storage } from "@plasmohq/storage";
-import { WHITELIST_KEY, BLACKLIST_KEY, SETTINGS_KEY } from "~store";
+import { WHITELIST_KEY, BLACKLIST_KEY, SETTINGS_KEY, DEFAULT_SETTINGS } from "~store";
 import type { Settings } from "~types";
 import { ModeType, CookieClearType } from "~types";
 import { isInList, isDomainMatch } from "~utils";
@@ -29,9 +29,10 @@ const getCleanupSettings = async (
   clearType: CookieClearType;
   clearOptions: ClearBrowserDataOptions;
 }> => {
-  const settings = await storage.get<Settings>(SETTINGS_KEY);
+  let settings = await storage.get<Settings>(SETTINGS_KEY);
   if (!settings) {
-    throw new Error("Settings not found");
+    settings = DEFAULT_SETTINGS;
+    await storage.set(SETTINGS_KEY, DEFAULT_SETTINGS);
   }
 
   const whitelist = (await storage.get<string[]>(WHITELIST_KEY)) || [];
@@ -116,7 +117,8 @@ export const cleanupExpiredCookies = async (): Promise<number> => {
   for (const cookie of cookies) {
     try {
       if (cookie.expirationDate && cookie.expirationDate * 1000 < now) {
-        const url = `http${cookie.secure ? "s" : ""}://${cookie.domain}${cookie.path}`;
+        const cleanedDomain = cookie.domain.replace(/^\./, "");
+        const url = `http${cookie.secure ? "s" : ""}://${cleanedDomain}${cookie.path}`;
         await chrome.cookies.remove({ url, name: cookie.name });
         count++;
       }

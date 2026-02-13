@@ -1,10 +1,11 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useStorage } from "@plasmohq/storage/hook";
 import { DomainManager } from "~components/DomainManager";
 import { Settings } from "~components/Settings";
 import { ClearLog } from "~components/ClearLog";
 import { CookieList } from "~components/CookieList";
 import { ErrorBoundary } from "~components/ErrorBoundary";
+import { ConfirmDialog } from "~components/ConfirmDialog";
 import {
   WHITELIST_KEY,
   BLACKLIST_KEY,
@@ -30,6 +31,14 @@ import { performCleanup } from "~utils/cleanup";
 import { MESSAGE_DURATION } from "~constants";
 import "./style.css";
 
+interface ConfirmState {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  variant: "danger" | "warning";
+  onConfirm: () => void;
+}
+
 function IndexPopup() {
   const [currentDomain, setCurrentDomain] = useState("");
   const [activeTab, setActiveTab] = useState("manage");
@@ -41,22 +50,33 @@ function IndexPopup() {
     persistent: 0,
   });
   const [currentCookies, setCurrentCookies] = useState<Cookie[]>([]);
-  const [theme, setTheme] = useState<ThemeMode>(ThemeMode.AUTO);
+  const [systemTheme, setSystemTheme] = useState<"light" | "dark">(() => {
+    if (typeof window !== "undefined") {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    return "light";
+  });
+  const [confirmState, setConfirmState] = useState<ConfirmState>({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "warning",
+    onConfirm: () => {},
+  });
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [whitelist, setWhitelist] = useStorage<DomainList>(WHITELIST_KEY, []);
   const [blacklist, setBlacklist] = useStorage<DomainList>(BLACKLIST_KEY, []);
   const [settings] = useStorage<SettingsType>(SETTINGS_KEY, DEFAULT_SETTINGS);
   const [_logs, setLogs] = useStorage<ClearLogEntry[]>(CLEAR_LOG_KEY, []);
 
-  const applyTheme = useCallback(() => {
+  const theme = useMemo(() => {
     const themeMode = settings.themeMode;
     if (themeMode === ThemeMode.AUTO) {
-      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      setTheme(isDark ? ThemeMode.DARK : ThemeMode.LIGHT);
-    } else {
-      setTheme(themeMode);
+      return systemTheme === "dark" ? ThemeMode.DARK : ThemeMode.LIGHT;
     }
-  }, [settings.themeMode]);
+    return themeMode;
+  }, [settings.themeMode, systemTheme]);
 
   const showMessage = useCallback((text: string, isError = false) => {
     setMessage({ text, isError, visible: true });
@@ -65,12 +85,12 @@ function IndexPopup() {
 
   const updateStats = useCallback(async () => {
     try {
-      const cookies = await chrome.cookies.getAll({ domain: currentDomain });
-      const currentCookiesList = cookies.filter((c) => isDomainMatch(c.domain, currentDomain));
+      const allCookies = await chrome.cookies.getAll({});
+      const currentCookiesList = allCookies.filter((c) =>
+        currentDomain ? isDomainMatch(c.domain, currentDomain) : false
+      );
       const sessionCookies = currentCookiesList.filter((c) => !c.expirationDate);
       const persistentCookies = currentCookiesList.filter((c) => c.expirationDate);
-
-      const allCookies = await chrome.cookies.getAll({});
 
       setStats({
         total: allCookies.length,
@@ -95,7 +115,7 @@ function IndexPopup() {
       console.error("Failed to update stats:", e);
       showMessage("更新统计信息失败", true);
     }
-  }, [currentDomain, showMessage, setStats]);
+  }, [currentDomain, showMessage]);
 
   const addLog = useCallback(
     (domain: string, cookieType: CookieClearType, count: number) => {
@@ -229,30 +249,68 @@ function IndexPopup() {
     }
   }, [currentDomain, blacklist, setBlacklist, showMessage]);
 
+  const showConfirm = useCallback(
+    (title: string, message: string, variant: "danger" | "warning", onConfirm: () => void) => {
+      setConfirmState({ isOpen: true, title, message, variant, onConfirm });
+    },
+    []
+  );
+
+  const closeConfirm = useCallback(() => {
+    setConfirmState((prev) => ({ ...prev, isOpen: false }));
+  }, []);
+
+  const handleConfirm = useCallback(() => {
+    confirmState.onConfirm();
+    closeConfirm();
+  }, [confirmState, closeConfirm]);
+
   const quickClearCurrent = useCallback(() => {
-    if (confirm(`确定要清除 ${currentDomain} 的Cookie吗？`)) {
+    showConfirm("清除确认", `确定要清除 ${currentDomain} 的Cookie吗？`, "warning", () => {
       clearCookies(
         (d) => isDomainMatch(d, currentDomain),
         `已清除 ${currentDomain}`,
         settings.clearType
       );
-    }
-  }, [currentDomain, clearCookies, settings.clearType]);
+    });
+  }, [currentDomain, clearCookies, settings.clearType, showConfirm]);
 
   const quickClearAll = useCallback(() => {
-    if (confirm("确定要清除所有Cookie吗？（白名单除外）")) {
+    showConfirm("清除确认", "确定要清除所有Cookie吗？（白名单除外）", "danger", () => {
       clearCookies(() => true, "已清除所有网站", settings.clearType);
-    }
-  }, [clearCookies, settings.clearType]);
+    });
+  }, [clearCookies, settings.clearType, showConfirm]);
 
   useEffect(() => {
-    const cookieListener = () => updateStats();
+    const cookieListener = () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        updateStats();
+      }, 300);
+    };
+
     chrome.cookies.onChanged.addListener(cookieListener);
 
     return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
       chrome.cookies.onChanged.removeListener(cookieListener);
     };
   }, [updateStats]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const handler = (e: MediaQueryListEvent) => {
+      setSystemTheme(e.matches ? "dark" : "light");
+    };
+
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, []);
 
   useEffect(() => {
     async function init() {
@@ -266,7 +324,6 @@ function IndexPopup() {
         }
       }
       updateStats();
-      applyTheme();
 
       if (settings.cleanupOnStartup) {
         await cleanupStartup();
@@ -282,7 +339,6 @@ function IndexPopup() {
     settings.cleanupOnStartup,
     settings.cleanupExpiredCookies,
     updateStats,
-    applyTheme,
     cleanupStartup,
     cleanupExpiredCookies,
   ]);
@@ -452,6 +508,15 @@ function IndexPopup() {
         >
           {message.text}
         </div>
+
+        <ConfirmDialog
+          isOpen={confirmState.isOpen}
+          title={confirmState.title}
+          message={confirmState.message}
+          variant={confirmState.variant}
+          onConfirm={handleConfirm}
+          onCancel={closeConfirm}
+        />
       </div>
     </ErrorBoundary>
   );

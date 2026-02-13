@@ -28,7 +28,7 @@ export const DomainManager = ({ type, currentDomain, onMessage, onClearBlacklist
         onMessage(`${trimmed} 已在${type === "whitelist" ? "白名单" : "黑名单"}中`);
         return;
       }
-      if (!/^[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9]$/.test(trimmed)) {
+      if (!/^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$/.test(trimmed)) {
         onMessage("域名格式不正确");
         return;
       }
