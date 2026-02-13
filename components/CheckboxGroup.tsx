@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 interface Props {
   options: Array<{
     checked: boolean;
@@ -6,9 +8,9 @@ interface Props {
   }>;
 }
 
-export const CheckboxGroup = ({ options }: Props) => {
+export const CheckboxGroup = memo(({ options }: Props) => {
   return (
-    <div className="checkbox-group">
+    <div className="checkbox-group" role="group">
       {options.map((option) => (
         <label key={option.label} className="checkbox-label">
           <input
@@ -21,6 +23,6 @@ export const CheckboxGroup = ({ options }: Props) => {
       ))}
     </div>
   );
-};
+});
 
 CheckboxGroup.displayName = "CheckboxGroup";
