@@ -48,8 +48,12 @@ export const CookieList = memo(({ cookies }: Props) => {
         onClick={() => setIsExpanded(!isExpanded)}
         aria-expanded={isExpanded}
       >
-        <h3><span aria-hidden="true">🍪</span> Cookie 详情 ({cookies.length})</h3>
-        <span className={`expand-icon ${isExpanded ? "expanded" : ""}`} aria-hidden="true">▼</span>
+        <h3>
+          <span aria-hidden="true">🍪</span> Cookie 详情 ({cookies.length})
+        </h3>
+        <span className={`expand-icon ${isExpanded ? "expanded" : ""}`} aria-hidden="true">
+          ▼
+        </span>
       </button>
 
       {isExpanded && (
