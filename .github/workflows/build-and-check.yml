@@ -3,28 +3,8 @@ name: Build and Check Browser Extension
 on:
   push:
     branches: [main, beta, release]
-    paths:
-      - "**.ts"
-      - "**.tsx"
-      - "**.js"
-      - "**.jsx"
-      - "**.json"
-      - "**.css"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/build-and-check.yml"
   pull_request:
     branches: [main]
-    paths:
-      - "**.ts"
-      - "**.tsx"
-      - "**.js"
-      - "**.jsx"
-      - "**.json"
-      - "**.css"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/build-and-check.yml"
   workflow_dispatch:
     inputs:
       create_release:
@@ -54,41 +34,10 @@ env:
   EXTENSION_SIZE_LIMIT_MB: 10
 
 jobs:
-  changes:
-    name: Detect Changes
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      code: ${{ steps.filter.outputs.code }}
-      deps: ${{ steps.filter.outputs.deps }}
-      workflow: ${{ steps.filter.outputs.workflow }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6.0.2
-
-      - name: Detect file changes
-        uses: dorny/paths-filter@v3.0.2
-        id: filter
-        with:
-          filters: |
-            code:
-              - '**.ts'
-              - '**.tsx'
-              - '**.js'
-              - '**.jsx'
-              - '**.css'
-            deps:
-              - 'package.json'
-              - 'package-lock.json'
-            workflow:
-              - '.github/workflows/build-and-check.yml'
-
   setup:
     name: Setup Dependencies
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [changes]
-    if: needs.changes.outputs.code == 'true' || needs.changes.outputs.deps == 'true' || needs.changes.outputs.workflow == 'true' || github.event_name == 'workflow_dispatch'
     outputs:
       cache-key: ${{ steps.cache.outputs.key }}
     steps:
@@ -120,8 +69,7 @@ jobs:
     name: Lint & Format Check
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [setup, changes]
-    if: needs.changes.outputs.code == 'true' || needs.changes.outputs.workflow == 'true' || github.event_name == 'workflow_dispatch'
+    needs: [setup]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6.0.2
@@ -153,8 +101,7 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [setup, changes]
-    if: needs.changes.outputs.code == 'true' || needs.changes.outputs.deps == 'true' || github.event_name == 'workflow_dispatch'
+    needs: [setup]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6.0.2
@@ -197,8 +144,7 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [setup, changes]
-    if: needs.changes.outputs.deps == 'true' || github.event_name == 'workflow_dispatch'
+    needs: [setup]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6.0.2
@@ -254,8 +200,8 @@ jobs:
     name: Build Extension
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [setup, lint, test, changes]
-    if: always() && (needs.setup.result == 'success') && (needs.lint.result == 'success' || needs.lint.result == 'skipped') && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    needs: [setup, lint, test]
+    if: always() && needs.setup.result == 'success' && needs.lint.result == 'success' && needs.test.result == 'success'
     outputs:
       version: ${{ steps.version.outputs.version }}
       name: ${{ steps.version.outputs.name }}
@@ -370,12 +316,8 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [build, changes]
-    if: |
-      always() &&
-      needs.build.result == 'success' &&
-      needs.changes.outputs.code == 'true' &&
-      github.event.inputs.skip_tests != 'true'
+    needs: [build]
+    if: always() && needs.build.result == 'success' && github.event.inputs.skip_tests != 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6.0.2
