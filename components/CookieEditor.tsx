@@ -42,9 +42,27 @@ export const CookieEditor = ({ isOpen, cookie, onClose, onSave }: Props) => {
 
   if (!isOpen) return null;
 
+  const handleOverlayKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onClose();
+    }
+  };
+
   return (
-    <div className="confirm-overlay" onClick={onClose}>
-      <div className="confirm-dialog cookie-editor-dialog" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="confirm-overlay"
+      onClick={onClose}
+      role="button"
+      tabIndex={0}
+      onKeyDown={handleOverlayKeyDown}
+    >
+      <div
+        className="confirm-dialog cookie-editor-dialog"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
         <h3 className="confirm-title">{cookie ? "编辑 Cookie" : "新建 Cookie"}</h3>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
