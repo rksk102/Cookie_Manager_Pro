@@ -64,6 +64,25 @@ describe("IndexPopup", () => {
           httpOnly: false,
           sameSite: "lax",
         },
+        {
+          name: "session",
+          value: "sessionval",
+          domain: ".example.com",
+          path: "/",
+          secure: false,
+          httpOnly: false,
+          sameSite: "lax",
+        },
+        {
+          name: "persistent",
+          value: "persistentval",
+          domain: ".example.com",
+          path: "/",
+          secure: true,
+          httpOnly: true,
+          sameSite: "strict",
+          expirationDate: Date.now() / 1000 + 3600,
+        },
       ])
     );
   });
@@ -189,6 +208,166 @@ describe("IndexPopup", () => {
 
     await waitFor(() => {
       expect(screen.queryByText("清除确认")).toBeNull();
+    });
+  });
+
+  it("should execute clear when confirm is clicked", async () => {
+    const { performCleanupWithFilter } = await import("~utils/cleanup");
+
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const clearCurrentBtn = screen.getByText("清除当前网站");
+    fireEvent.click(clearCurrentBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("清除确认")).toBeTruthy();
+    });
+
+    const confirmBtn = screen.getByText("确定");
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(performCleanupWithFilter).toHaveBeenCalled();
+    });
+  });
+
+  it("should execute clear all when confirm is clicked", async () => {
+    const { performCleanupWithFilter } = await import("~utils/cleanup");
+
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const clearAllBtn = screen.getByText("清除所有Cookie");
+    fireEvent.click(clearAllBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("清除确认")).toBeTruthy();
+    });
+
+    const confirmBtn = screen.getByText("确定");
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(performCleanupWithFilter).toHaveBeenCalled();
+    });
+  });
+
+  it("should display current domain", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const domainInfo = document.querySelector(".domain-info");
+    await waitFor(() => {
+      expect(domainInfo?.textContent).toBe("example.com");
+    });
+  });
+
+  it("should display stat labels", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const statLabels = document.querySelectorAll(".stat-label");
+    expect(statLabels.length).toBeGreaterThan(0);
+    expect(statLabels[0].textContent).toBe("总数");
+  });
+
+  it("should switch to whitelist tab when clicked", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const whitelistTab = screen.getByRole("tab", { name: /白名单/ });
+    fireEvent.click(whitelistTab);
+
+    expect(screen.getByText("白名单域名")).toBeTruthy();
+  });
+
+  it("should handle add to whitelist click", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const addWhitelistBtn = screen.getByText("添加到白名单");
+    fireEvent.click(addWhitelistBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/已添加.*到白名单/)).toBeTruthy();
+    });
+  });
+
+  it("should handle add to blacklist click", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const addBlacklistBtn = screen.getByText("添加到黑名单");
+    fireEvent.click(addBlacklistBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/已添加.*到黑名单/)).toBeTruthy();
+    });
+  });
+
+  it("should handle tab without url", async () => {
+    (chrome.tabs.query as ReturnType<typeof vi.fn>).mockImplementation(() =>
+      Promise.resolve([
+        {
+          id: 1,
+          url: undefined,
+          active: true,
+          currentWindow: true,
+        },
+      ])
+    );
+
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    expect(screen.getByText("无法获取域名")).toBeTruthy();
+  });
+
+  it("should handle invalid url", async () => {
+    (chrome.tabs.query as ReturnType<typeof vi.fn>).mockImplementation(() =>
+      Promise.resolve([
+        {
+          id: 1,
+          url: "invalid-url",
+          active: true,
+          currentWindow: true,
+        },
+      ])
+    );
+
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    expect(screen.getByText("无法获取域名")).toBeTruthy();
+  });
+
+  it("should show success message after clearing cookies", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const clearCurrentBtn = screen.getByText("清除当前网站");
+    fireEvent.click(clearCurrentBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("清除确认")).toBeTruthy();
+    });
+
+    const confirmBtn = screen.getByText("确定");
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/已清除/)).toBeTruthy();
     });
   });
 });
