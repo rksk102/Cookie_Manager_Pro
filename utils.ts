@@ -289,10 +289,7 @@ export const groupCookiesByDomain = (
     if (!grouped.has(domain)) {
       grouped.set(domain, []);
     }
-    const domainCookies = grouped.get(domain);
-    if (domainCookies) {
-      domainCookies.push(cookie);
-    }
+    grouped.get(domain)!.push(cookie);
   }
   return grouped;
 };

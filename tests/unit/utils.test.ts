@@ -473,6 +473,24 @@ describe("assessCookieRisk", () => {
     expect(result.isTracking).toBe(true);
     expect(result.isThirdParty).toBe(true);
   });
+
+  it("should not increase risk level when already high for non-secure cookie", () => {
+    const result = assessCookieRisk(
+      { name: "_ga", domain: ".example.com", httpOnly: true, secure: false },
+      "example.com"
+    );
+    expect(result.level).toBe("high");
+    expect(result.reason).toContain("非 Secure");
+  });
+
+  it("should not increase risk level when already medium for non-secure cookie", () => {
+    const result = assessCookieRisk(
+      { name: "test", domain: ".other.com", httpOnly: true, secure: false },
+      "example.com"
+    );
+    expect(result.level).toBe("medium");
+    expect(result.reason).toContain("非 Secure");
+  });
 });
 
 describe("getRiskLevelColor", () => {
@@ -628,6 +646,29 @@ describe("editCookie", () => {
     expect(result).toBe(false);
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
+  });
+
+  it("should use original expiration date when update doesn't provide it", async () => {
+    const originalCookie = {
+      name: "test",
+      value: "old",
+      domain: ".example.com",
+      path: "/",
+      secure: false,
+      httpOnly: false,
+      sameSite: "lax",
+      expirationDate: Date.now() / 1000 + 3600,
+      storeId: "0",
+      session: false,
+      hostOnly: false,
+    } as chrome.cookies.Cookie;
+    const updates = { value: "new" };
+
+    vi.spyOn(chrome.cookies, "remove").mockResolvedValue(undefined);
+    vi.spyOn(chrome.cookies, "set").mockResolvedValue(undefined);
+
+    const result = await editCookie(originalCookie, updates);
+    expect(result).toBe(true);
   });
 });
 
