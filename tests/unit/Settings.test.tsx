@@ -267,4 +267,222 @@ describe("Settings", () => {
 
     expect(mockOnMessage).toHaveBeenCalledWith("设置已保存");
   });
+
+  it("should show all custom theme color inputs when custom theme is selected", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    const customRadio = screen.getByLabelText("自定义");
+    fireEvent.click(customRadio);
+
+    expect(screen.getByText("主色调")).toBeTruthy();
+    expect(screen.getByText("成功色")).toBeTruthy();
+    expect(screen.getByText("警告色")).toBeTruthy();
+    expect(screen.getByText("危险色")).toBeTruthy();
+    expect(screen.getByText("主背景")).toBeTruthy();
+    expect(screen.getByText("次背景")).toBeTruthy();
+    expect(screen.getByText("主文字")).toBeTruthy();
+    expect(screen.getByText("次文字")).toBeTruthy();
+  });
+
+  it("should call onMessage when custom theme color is changed", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    const customRadio = screen.getByLabelText("自定义");
+    fireEvent.click(customRadio);
+
+    const colorInputs = document.querySelectorAll('input[type="color"]');
+    const primaryColorInput = colorInputs[0] as HTMLInputElement;
+    fireEvent.change(primaryColorInput, { target: { value: "#ff0000" } });
+
+    expect(mockOnMessage).toHaveBeenCalledWith("设置已保存");
+  });
+
+  it("should call onMessage when success color is changed", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    const customRadio = screen.getByLabelText("自定义");
+    fireEvent.click(customRadio);
+
+    const colorInputs = document.querySelectorAll('input[type="color"]');
+    const successColorInput = colorInputs[1] as HTMLInputElement;
+    fireEvent.change(successColorInput, { target: { value: "#00ff00" } });
+
+    expect(mockOnMessage).toHaveBeenCalledWith("设置已保存");
+  });
+
+  it("should call onMessage when warning color is changed", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    const customRadio = screen.getByLabelText("自定义");
+    fireEvent.click(customRadio);
+
+    const colorInputs = document.querySelectorAll('input[type="color"]');
+    const warningColorInput = colorInputs[2] as HTMLInputElement;
+    fireEvent.change(warningColorInput, { target: { value: "#ffff00" } });
+
+    expect(mockOnMessage).toHaveBeenCalledWith("设置已保存");
+  });
+
+  it("should call onMessage when danger color is changed", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    const customRadio = screen.getByLabelText("自定义");
+    fireEvent.click(customRadio);
+
+    const colorInputs = document.querySelectorAll('input[type="color"]');
+    const dangerColorInput = colorInputs[3] as HTMLInputElement;
+    fireEvent.change(dangerColorInput, { target: { value: "#ff0000" } });
+
+    expect(mockOnMessage).toHaveBeenCalledWith("设置已保存");
+  });
+
+  it("should call onMessage when bgPrimary color is changed", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    const customRadio = screen.getByLabelText("自定义");
+    fireEvent.click(customRadio);
+
+    const colorInputs = document.querySelectorAll('input[type="color"]');
+    const bgPrimaryInput = colorInputs[4] as HTMLInputElement;
+    fireEvent.change(bgPrimaryInput, { target: { value: "#ffffff" } });
+
+    expect(mockOnMessage).toHaveBeenCalledWith("设置已保存");
+  });
+
+  it("should call onMessage when bgSecondary color is changed", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    const customRadio = screen.getByLabelText("自定义");
+    fireEvent.click(customRadio);
+
+    const colorInputs = document.querySelectorAll('input[type="color"]');
+    const bgSecondaryInput = colorInputs[5] as HTMLInputElement;
+    fireEvent.change(bgSecondaryInput, { target: { value: "#f0f0f0" } });
+
+    expect(mockOnMessage).toHaveBeenCalledWith("设置已保存");
+  });
+
+  it("should call onMessage when textPrimary color is changed", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    const customRadio = screen.getByLabelText("自定义");
+    fireEvent.click(customRadio);
+
+    const colorInputs = document.querySelectorAll('input[type="color"]');
+    const textPrimaryInput = colorInputs[6] as HTMLInputElement;
+    fireEvent.change(textPrimaryInput, { target: { value: "#000000" } });
+
+    expect(mockOnMessage).toHaveBeenCalledWith("设置已保存");
+  });
+
+  it("should call onMessage when textSecondary color is changed", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    const customRadio = screen.getByLabelText("自定义");
+    fireEvent.click(customRadio);
+
+    const colorInputs = document.querySelectorAll('input[type="color"]');
+    const textSecondaryInput = colorInputs[7] as HTMLInputElement;
+    fireEvent.change(textSecondaryInput, { target: { value: "#666666" } });
+
+    expect(mockOnMessage).toHaveBeenCalledWith("设置已保存");
+  });
+
+  it("should render setting descriptions", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    expect(
+      screen.getByText("控制 Cookie 清理的应用范围，根据您的需求选择合适的保护策略")
+    ).toBeTruthy();
+    expect(
+      screen.getByText("选择要清除的 Cookie 类型，会话 Cookie 在关闭浏览器后会自动失效")
+    ).toBeTruthy();
+    expect(screen.getByText("设置自动清理的时间间隔，确保您的隐私得到持续保护")).toBeTruthy();
+  });
+
+  it("should render auto cleanup description", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    expect(screen.getByText("配置不同场景下的自动清理行为，减少手动操作的繁琐")).toBeTruthy();
+  });
+
+  it("should render privacy protection description", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    expect(screen.getByText("增强您的在线隐私保护，识别并警示潜在的追踪行为")).toBeTruthy();
+  });
+
+  it("should render advanced cleanup description", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    expect(
+      screen.getByText("除了 Cookie 外，还可以清理其他可能存储您数据的浏览器存储")
+    ).toBeTruthy();
+  });
+
+  it("should handle log retention change to one hour", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    const select = screen.getByRole("combobox");
+    fireEvent.change(select, { target: { value: LogRetention.ONE_HOUR } });
+
+    expect(mockOnMessage).toHaveBeenCalledWith("设置已保存");
+  });
+
+  it("should handle log retention change to seven days", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    const select = screen.getByRole("combobox");
+    fireEvent.change(select, { target: { value: LogRetention.SEVEN_DAYS } });
+
+    expect(mockOnMessage).toHaveBeenCalledWith("设置已保存");
+  });
+
+  it("should handle all checkboxes in auto cleanup section", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    const checkboxes = screen.getAllByRole("checkbox");
+
+    fireEvent.click(checkboxes[0]);
+    expect(mockOnMessage).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(checkboxes[1]);
+    expect(mockOnMessage).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(checkboxes[2]);
+    expect(mockOnMessage).toHaveBeenCalledTimes(3);
+
+    fireEvent.click(checkboxes[3]);
+    expect(mockOnMessage).toHaveBeenCalledTimes(4);
+  });
+
+  it("should handle all checkboxes in privacy protection section", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    const checkboxes = screen.getAllByRole("checkbox");
+
+    fireEvent.click(checkboxes[4]);
+    expect(mockOnMessage).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(checkboxes[5]);
+    expect(mockOnMessage).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(checkboxes[6]);
+    expect(mockOnMessage).toHaveBeenCalledTimes(3);
+  });
+
+  it("should handle all checkboxes in advanced cleanup section", () => {
+    render(<Settings onMessage={mockOnMessage} />);
+
+    const checkboxes = screen.getAllByRole("checkbox");
+
+    fireEvent.click(checkboxes[7]);
+    expect(mockOnMessage).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(checkboxes[8]);
+    expect(mockOnMessage).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(checkboxes[9]);
+    expect(mockOnMessage).toHaveBeenCalledTimes(3);
+  });
 });
