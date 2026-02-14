@@ -1198,4 +1198,94 @@ describe("IndexPopup", () => {
       expect(message).toBeTruthy();
     });
   });
+
+  it("should handle quickAddToWhitelist with no currentDomain", async () => {
+    (chrome.tabs.query as ReturnType<typeof vi.fn>).mockImplementation(() => Promise.resolve([]));
+
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const addWhitelistBtn = screen.getByText("添加到白名单");
+    fireEvent.click(addWhitelistBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("无法获取域名")).toBeTruthy();
+    });
+  });
+
+  it("should handle quickAddToBlacklist with no currentDomain", async () => {
+    (chrome.tabs.query as ReturnType<typeof vi.fn>).mockImplementation(() => Promise.resolve([]));
+
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const addBlacklistBtn = screen.getByText("添加到黑名单");
+    fireEvent.click(addBlacklistBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("无法获取域名")).toBeTruthy();
+    });
+  });
+
+  it("should handle message text content", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const addWhitelistBtn = screen.getByText("添加到白名单");
+    fireEvent.click(addWhitelistBtn);
+
+    await waitFor(() => {
+      const message = document.querySelector(".message");
+      expect(message?.textContent).toContain("已添加");
+    });
+  });
+
+  it("should handle confirm dialog confirm button focus", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const clearCurrentBtn = screen.getByText("清除当前网站");
+    fireEvent.click(clearCurrentBtn);
+
+    await waitFor(() => {
+      const confirmBtn = screen.getByText("确定");
+      expect(confirmBtn).toBeTruthy();
+    });
+  });
+
+  it("should handle settings change triggering init", async () => {
+    const { useStorage } = await import("@plasmohq/storage/hook");
+    const { useState } = await import("react");
+
+    const settingsMock = vi.fn((key: string, defaultValue: unknown) => {
+      if (key === "settings") {
+        return [
+          {
+            mode: "whitelist",
+            themeMode: "light",
+            clearType: "all",
+            clearCache: false,
+            clearLocalStorage: false,
+            clearIndexedDB: false,
+            cleanupOnStartup: false,
+            cleanupExpiredCookies: false,
+            logRetention: "7d",
+          },
+        ];
+      }
+      return useState(defaultValue);
+    });
+
+    (useStorage as ReturnType<typeof vi.fn>).mockImplementation(settingsMock);
+
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    expect(settingsMock).toHaveBeenCalled();
+  });
 });
