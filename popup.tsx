@@ -26,8 +26,8 @@ import { isDomainMatch, isInList } from "~utils";
 import {
   performCleanupWithFilter,
   cleanupExpiredCookies as cleanupExpiredCookiesUtil,
+  performCleanup,
 } from "~utils/cleanup";
-import { performCleanup } from "~utils/cleanup";
 import { MESSAGE_DURATION } from "~constants";
 import "./style.css";
 

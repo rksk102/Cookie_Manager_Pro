@@ -75,16 +75,14 @@ export const CookieList = memo(({ cookies }: Props) => {
                     <span className="detail-label">值:</span>
                     <span className="detail-value">
                       {displayValue}
-                      {isSensitive && (
-                        <button
-                          type="button"
-                          className="value-toggle-btn"
-                          onClick={() => toggleValueVisibility(cookieKey)}
-                          aria-label={isVisible ? "隐藏" : "显示"}
-                        >
-                          {isVisible ? "👁️" : "👁️‍🗨️"}
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        className="value-toggle-btn"
+                        onClick={() => toggleValueVisibility(cookieKey)}
+                        aria-label={isVisible ? "隐藏" : "显示"}
+                      >
+                        {isVisible ? "👁️" : "👁️‍🗨️"}
+                      </button>
                     </span>
                   </div>
                   <div className="cookie-detail-row">
