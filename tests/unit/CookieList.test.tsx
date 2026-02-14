@@ -100,10 +100,10 @@ describe("CookieList", () => {
     const headerButton = screen.getByRole("button", { name: /Cookie 详情/ });
     fireEvent.click(headerButton);
 
-    const selectAllCheckbox = screen.getByRole("checkbox", { name: /全选/ });
+    const selectAllCheckbox = screen.getByRole("checkbox", { name: /全选/ }) as HTMLInputElement;
     fireEvent.click(selectAllCheckbox);
 
-    expect(selectAllCheckbox).toBeChecked();
+    expect(selectAllCheckbox.checked).toBe(true);
   });
 
   it("should show batch actions when cookies are selected", () => {
