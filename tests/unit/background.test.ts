@@ -1,0 +1,331 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+const mockStorageData = new Map<string, unknown>();
+
+class MockStorage {
+  async get(key: string) {
+    return mockStorageData.get(key);
+  }
+  async set(key: string, value: unknown) {
+    mockStorageData.set(key, value);
+  }
+}
+
+vi.mock("@plasmohq/storage", () => ({
+  Storage: MockStorage,
+}));
+
+vi.mock("~utils/cleanup", () => ({
+  performCleanup: vi.fn(() => Promise.resolve({ count: 5, clearedDomains: ["example.com"] })),
+  performCleanupWithFilter: vi.fn(() =>
+    Promise.resolve({ count: 10, clearedDomains: ["test.com", "example.com"] })
+  ),
+}));
+
+vi.mock("~store", () => ({
+  WHITELIST_KEY: "whitelist",
+  BLACKLIST_KEY: "blacklist",
+  SETTINGS_KEY: "settings",
+  DEFAULT_SETTINGS: {
+    clearType: "all",
+    logRetention: "7d",
+    themeMode: "auto",
+    mode: "whitelist",
+    clearLocalStorage: false,
+    clearIndexedDB: false,
+    clearCache: false,
+    enableAutoCleanup: false,
+    cleanupOnTabDiscard: false,
+    cleanupOnStartup: false,
+    cleanupExpiredCookies: false,
+    scheduleInterval: "disabled",
+    enablePrivacyProtection: true,
+    showCookieRisk: true,
+    blockThirdPartyCookies: false,
+  },
+  SCHEDULE_INTERVAL_MAP: {
+    hourly: 60 * 60 * 1000,
+    daily: 24 * 60 * 60 * 1000,
+    weekly: 7 * 24 * 60 * 60 * 1000,
+  },
+}));
+
+const listeners = {
+  onInstalled: [] as Array<() => void>,
+  onStartup: [] as Array<() => void>,
+  onUpdated: [] as Array<(tabId: number, changeInfo: unknown, tab: unknown) => void>,
+  onAlarm: [] as Array<(alarm: { name: string }) => void>,
+};
+
+describe("background", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockStorageData.clear();
+    listeners.onInstalled = [];
+    listeners.onStartup = [];
+    listeners.onUpdated = [];
+    listeners.onAlarm = [];
+
+    global.chrome = {
+      runtime: {
+        onInstalled: {
+          addListener: function (cb: () => void) {
+            listeners.onInstalled.push(cb);
+          },
+          removeListener: vi.fn(),
+        },
+        onStartup: {
+          addListener: function (cb: () => void) {
+            listeners.onStartup.push(cb);
+          },
+          removeListener: vi.fn(),
+        },
+      },
+      alarms: {
+        create: vi.fn(),
+        onAlarm: {
+          addListener: function (cb: (alarm: { name: string }) => void) {
+            listeners.onAlarm.push(cb);
+          },
+          removeListener: vi.fn(),
+        },
+      },
+      tabs: {
+        onUpdated: {
+          addListener: function (cb: (tabId: number, changeInfo: unknown, tab: unknown) => void) {
+            listeners.onUpdated.push(cb);
+          },
+          removeListener: vi.fn(),
+        },
+        query: vi.fn(() =>
+          Promise.resolve([
+            {
+              id: 1,
+              url: "https://example.com/test",
+              active: true,
+            },
+          ])
+        ),
+      },
+    } as unknown as typeof chrome;
+
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should register onInstalled listener", async () => {
+    await import("../../background");
+
+    expect(listeners.onInstalled.length).toBeGreaterThan(0);
+  });
+
+  it("should register onStartup listener", async () => {
+    await import("../../background");
+
+    expect(listeners.onStartup.length).toBeGreaterThan(0);
+  });
+
+  it("should register tabs onUpdated listener", async () => {
+    await import("../../background");
+
+    expect(listeners.onUpdated.length).toBeGreaterThan(0);
+  });
+
+  it("should register alarms onAlarm listener", async () => {
+    await import("../../background");
+
+    expect(listeners.onAlarm.length).toBeGreaterThan(0);
+  });
+
+  it("should initialize whitelist on install when undefined", async () => {
+    await import("../../background");
+
+    for (const cb of listeners.onInstalled) {
+      await cb();
+    }
+
+    expect(mockStorageData.get("whitelist")).toEqual([]);
+  });
+
+  it("should initialize blacklist on install when undefined", async () => {
+    await import("../../background");
+
+    for (const cb of listeners.onInstalled) {
+      await cb();
+    }
+
+    expect(mockStorageData.get("blacklist")).toEqual([]);
+  });
+
+  it("should initialize settings on install when undefined", async () => {
+    await import("../../background");
+
+    for (const cb of listeners.onInstalled) {
+      await cb();
+    }
+
+    expect(mockStorageData.get("settings")).toBeDefined();
+  });
+
+  it("should not overwrite existing whitelist on install", async () => {
+    mockStorageData.set("whitelist", ["existing.com"]);
+
+    await import("../../background");
+
+    for (const cb of listeners.onInstalled) {
+      await cb();
+    }
+
+    expect(mockStorageData.get("whitelist")).toEqual(["existing.com"]);
+  });
+
+  it("should not overwrite existing blacklist on install", async () => {
+    mockStorageData.set("blacklist", ["bad.com"]);
+
+    await import("../../background");
+
+    for (const cb of listeners.onInstalled) {
+      await cb();
+    }
+
+    expect(mockStorageData.get("blacklist")).toEqual(["bad.com"]);
+  });
+
+  it("should create scheduled cleanup alarm on installed", async () => {
+    await import("../../background");
+
+    for (const cb of listeners.onInstalled) {
+      await cb();
+    }
+
+    expect(chrome.alarms.create).toHaveBeenCalledWith("scheduled-cleanup", {
+      periodInMinutes: 60,
+    });
+  });
+
+  it("should create scheduled cleanup alarm on startup", async () => {
+    await import("../../background");
+
+    for (const cb of listeners.onStartup) {
+      await cb();
+    }
+
+    expect(chrome.alarms.create).toHaveBeenCalledWith("scheduled-cleanup", {
+      periodInMinutes: 60,
+    });
+  });
+
+  it("should handle scheduled cleanup alarm", async () => {
+    const { performCleanupWithFilter } = await import("~utils/cleanup");
+
+    mockStorageData.set("settings", {
+      scheduleInterval: "hourly",
+      lastScheduledCleanup: Date.now() - 2 * 60 * 60 * 1000,
+      clearCache: false,
+      clearLocalStorage: false,
+      clearIndexedDB: false,
+    });
+
+    await import("../../background");
+
+    for (const cb of listeners.onAlarm) {
+      await cb({ name: "scheduled-cleanup" });
+    }
+
+    expect(performCleanupWithFilter).toHaveBeenCalled();
+  });
+
+  it("should not run scheduled cleanup when disabled", async () => {
+    const { performCleanupWithFilter } = await import("~utils/cleanup");
+
+    mockStorageData.set("settings", {
+      scheduleInterval: "disabled",
+      lastScheduledCleanup: 0,
+    });
+
+    await import("../../background");
+
+    for (const cb of listeners.onAlarm) {
+      await cb({ name: "scheduled-cleanup" });
+    }
+
+    expect(performCleanupWithFilter).not.toHaveBeenCalled();
+  });
+
+  it("should handle tab discard event with cleanup enabled", async () => {
+    const { performCleanup } = await import("~utils/cleanup");
+
+    mockStorageData.set("settings", {
+      enableAutoCleanup: true,
+      cleanupOnTabDiscard: true,
+      clearCache: false,
+      clearLocalStorage: false,
+      clearIndexedDB: false,
+    });
+
+    await import("../../background");
+
+    for (const cb of listeners.onUpdated) {
+      await cb(1, { discarded: true }, { url: "https://example.com/test" });
+    }
+
+    expect(performCleanup).toHaveBeenCalled();
+  });
+
+  it("should not cleanup on tab discard when disabled", async () => {
+    const { performCleanup } = await import("~utils/cleanup");
+
+    mockStorageData.set("settings", {
+      enableAutoCleanup: false,
+      cleanupOnTabDiscard: false,
+    });
+
+    await import("../../background");
+
+    for (const cb of listeners.onUpdated) {
+      await cb(1, { discarded: true }, { url: "https://example.com/test" });
+    }
+
+    expect(performCleanup).not.toHaveBeenCalled();
+  });
+
+  it("should handle startup cleanup when enabled", async () => {
+    const { performCleanup } = await import("~utils/cleanup");
+
+    mockStorageData.set("settings", {
+      enableAutoCleanup: true,
+      cleanupOnStartup: true,
+      clearCache: false,
+      clearLocalStorage: false,
+      clearIndexedDB: false,
+    });
+
+    await import("../../background");
+
+    for (const cb of listeners.onStartup) {
+      await cb();
+    }
+
+    expect(performCleanup).toHaveBeenCalled();
+  });
+
+  it("should not cleanup on startup when disabled", async () => {
+    const { performCleanup } = await import("~utils/cleanup");
+
+    mockStorageData.set("settings", {
+      enableAutoCleanup: false,
+      cleanupOnStartup: false,
+    });
+
+    await import("../../background");
+
+    for (const cb of listeners.onStartup) {
+      await cb();
+    }
+
+    expect(performCleanup).not.toHaveBeenCalled();
+  });
+});
