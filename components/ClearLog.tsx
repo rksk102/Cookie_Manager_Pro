@@ -2,7 +2,7 @@ import { useStorage } from "@plasmohq/storage/hook";
 import { CLEAR_LOG_KEY, SETTINGS_KEY, DEFAULT_SETTINGS, LOG_RETENTION_MAP } from "~store";
 import type { ClearLogEntry, Settings } from "~types";
 import { LogRetention } from "~types";
-import { getCookieTypeName } from "~utils";
+import { getCookieTypeName, getActionText, getActionColor, formatLogTime } from "~utils";
 import { useMemo } from "react";
 
 interface Props {
@@ -12,17 +12,6 @@ interface Props {
 export const ClearLog = ({ onMessage }: Props) => {
   const [logs, setLogs] = useStorage<ClearLogEntry[]>(CLEAR_LOG_KEY, []);
   const [settings] = useStorage<Settings>(SETTINGS_KEY, DEFAULT_SETTINGS);
-
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString("zh-CN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
 
   const clearAllLogs = () => {
     if (confirm("确定要清除所有日志记录吗？")) {
@@ -51,6 +40,18 @@ export const ClearLog = ({ onMessage }: Props) => {
     });
   };
 
+  const exportLogs = () => {
+    const dataStr = JSON.stringify(logs, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `cookie-manager-logs-${Date.now()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    onMessage("日志已导出");
+  };
+
   const sortedLogs = useMemo(() => [...logs].sort((a, b) => b.timestamp - a.timestamp), [logs]);
 
   return (
@@ -59,10 +60,13 @@ export const ClearLog = ({ onMessage }: Props) => {
         <div className="log-header">
           <h3>清除日志</h3>
           <div className="log-actions">
-            <button onClick={clearOldLogs} className="btn btn-secondary">
+            <button onClick={clearOldLogs} className="btn btn-secondary btn-sm">
               清除过期
             </button>
-            <button onClick={clearAllLogs} className="btn btn-danger">
+            <button onClick={exportLogs} className="btn btn-primary btn-sm">
+              导出日志
+            </button>
+            <button onClick={clearAllLogs} className="btn btn-danger btn-sm">
               清除全部
             </button>
           </div>
@@ -80,10 +84,17 @@ export const ClearLog = ({ onMessage }: Props) => {
               <div className="log-info">
                 <div className="log-domain">{log.domain}</div>
                 <div className="log-details">
+                  <span
+                    className="log-type"
+                    style={{ backgroundColor: getActionColor(log.action) }}
+                  >
+                    {getActionText(log.action)}
+                  </span>
                   <span className="log-type">{getCookieTypeName(log.cookieType)}</span>
                   <span className="log-count">{log.count} 个</span>
-                  <span className="log-time">{formatTime(log.timestamp)}</span>
+                  <span className="log-time">{formatLogTime(log.timestamp)}</span>
                 </div>
+                {log.details && <div className="log-details-text">{log.details}</div>}
               </div>
             </li>
           ))}

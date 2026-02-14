@@ -24,6 +24,8 @@ export interface CookieStats {
   current: number;
   session: number;
   persistent: number;
+  thirdParty: number;
+  tracking: number;
 }
 
 export enum CookieClearType {
@@ -48,11 +50,30 @@ export enum ThemeMode {
   AUTO = "auto",
   LIGHT = "light",
   DARK = "dark",
+  CUSTOM = "custom",
 }
 
 export enum ModeType {
   WHITELIST = "whitelist",
   BLACKLIST = "blacklist",
+}
+
+export enum ScheduleInterval {
+  DISABLED = "disabled",
+  HOURLY = "hourly",
+  DAILY = "daily",
+  WEEKLY = "weekly",
+}
+
+export interface CustomTheme {
+  primary: string;
+  success: string;
+  warning: string;
+  danger: string;
+  bgPrimary: string;
+  bgSecondary: string;
+  textPrimary: string;
+  textSecondary: string;
 }
 
 export interface Settings {
@@ -67,6 +88,12 @@ export interface Settings {
   cleanupOnTabDiscard: boolean;
   cleanupOnStartup: boolean;
   cleanupExpiredCookies: boolean;
+  customTheme?: CustomTheme;
+  scheduleInterval: ScheduleInterval;
+  lastScheduledCleanup?: number;
+  enablePrivacyProtection: boolean;
+  showCookieRisk: boolean;
+  blockThirdPartyCookies: boolean;
 }
 
 export interface ClearLogEntry {
@@ -75,4 +102,17 @@ export interface ClearLogEntry {
   cookieType: CookieClearType;
   count: number;
   timestamp: number;
+  action: "clear" | "edit" | "delete" | "import" | "export";
+  details?: string;
+}
+
+export interface CookieRisk {
+  level: "low" | "medium" | "high";
+  reason: string;
+  isTracking: boolean;
+  isThirdParty: boolean;
+}
+
+export interface CookieWithRisk extends Cookie {
+  risk?: CookieRisk;
 }

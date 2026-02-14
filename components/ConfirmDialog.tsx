@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -22,6 +22,25 @@ export function ConfirmDialog({
   variant = "warning",
 }: ConfirmDialogProps) {
   const confirmBtnRef = useRef<HTMLButtonElement>(null);
+
+  const handleOverlayClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.target === e.currentTarget) {
+        onCancel();
+      }
+    },
+    [onCancel]
+  );
+
+  const handleOverlayKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onCancel();
+      }
+    },
+    [onCancel]
+  );
 
   useEffect(() => {
     if (isOpen && confirmBtnRef.current) {
@@ -48,6 +67,9 @@ export function ConfirmDialog({
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-title"
+      onClick={handleOverlayClick}
+      onKeyDown={handleOverlayKeyDown}
+      tabIndex={-1}
     >
       <div className="confirm-dialog">
         <h3 id="confirm-title" className={`confirm-title ${variant === "danger" ? "danger" : ""}`}>

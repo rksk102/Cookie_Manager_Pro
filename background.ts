@@ -1,9 +1,45 @@
 import { Storage } from "@plasmohq/storage";
-import { WHITELIST_KEY, BLACKLIST_KEY, SETTINGS_KEY, DEFAULT_SETTINGS } from "~store";
+import {
+  WHITELIST_KEY,
+  BLACKLIST_KEY,
+  SETTINGS_KEY,
+  DEFAULT_SETTINGS,
+  SCHEDULE_INTERVAL_MAP,
+} from "~store";
 import type { Settings } from "~types";
-import { performCleanup } from "~utils/cleanup";
+import { performCleanup, performCleanupWithFilter } from "~utils/cleanup";
+import { CookieClearType, ScheduleInterval } from "~types";
 
 const storage = new Storage();
+
+const checkScheduledCleanup = async () => {
+  try {
+    const settings = await storage.get<Settings>(SETTINGS_KEY);
+    if (!settings || settings.scheduleInterval === ScheduleInterval.DISABLED) {
+      return;
+    }
+
+    const now = Date.now();
+    const lastCleanup = settings.lastScheduledCleanup || 0;
+    const interval = SCHEDULE_INTERVAL_MAP[settings.scheduleInterval];
+
+    if (now - lastCleanup >= interval) {
+      await performCleanupWithFilter(() => true, {
+        clearType: CookieClearType.ALL,
+        clearCache: settings.clearCache,
+        clearLocalStorage: settings.clearLocalStorage,
+        clearIndexedDB: settings.clearIndexedDB,
+      });
+
+      await storage.set(SETTINGS_KEY, {
+        ...settings,
+        lastScheduledCleanup: now,
+      });
+    }
+  } catch (e) {
+    console.error("Failed to perform scheduled cleanup:", e);
+  }
+};
 
 chrome.runtime.onInstalled.addListener(async () => {
   const whitelist = await storage.get(WHITELIST_KEY);
@@ -82,4 +118,23 @@ chrome.runtime.onStartup.addListener(async () => {
   } catch (e) {
     console.error("Failed to cleanup on startup:", e);
   }
+});
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name === "scheduled-cleanup") {
+    await checkScheduledCleanup();
+  }
+});
+
+chrome.runtime.onStartup.addListener(async () => {
+  await chrome.alarms.create("scheduled-cleanup", {
+    periodInMinutes: 60,
+  });
+});
+
+chrome.runtime.onInstalled.addListener(async () => {
+  await chrome.alarms.create("scheduled-cleanup", {
+    periodInMinutes: 60,
+  });
+  await checkScheduledCleanup();
 });

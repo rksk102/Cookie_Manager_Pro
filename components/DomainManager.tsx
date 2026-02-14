@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { useStorage } from "@plasmohq/storage/hook";
 import { WHITELIST_KEY, BLACKLIST_KEY } from "~store";
 import type { DomainList } from "~types";
+import { validateDomain } from "~utils";
 
 interface Props {
   type: "whitelist" | "blacklist";
@@ -20,16 +21,13 @@ export const DomainManager = ({ type, currentDomain, onMessage, onClearBlacklist
   const addDomain = useCallback(
     (domain: string) => {
       const trimmed = domain.trim();
-      if (!trimmed) {
-        onMessage("域名不能为空");
+      const validation = validateDomain(domain);
+      if (!validation.valid) {
+        onMessage(validation.message || "域名格式不正确");
         return;
       }
       if (list.includes(trimmed)) {
         onMessage(`${trimmed} 已在${type === "whitelist" ? "白名单" : "黑名单"}中`);
-        return;
-      }
-      if (!/^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$/.test(trimmed)) {
-        onMessage("域名格式不正确");
         return;
       }
       setList([...list, trimmed]);

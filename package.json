@@ -68,7 +68,8 @@
       "cookies",
       "storage",
       "tabs",
-      "browsingData"
+      "browsingData",
+      "alarms"
     ],
     "host_permissions": [
       "https://*/*",

@@ -1,4 +1,5 @@
-import { CookieClearType } from "./types";
+import { CookieClearType, CookieRisk } from "./types";
+import { TRACKING_COOKIE_KEYWORDS, THIRD_PARTY_TRACKERS } from "./constants";
 
 export const normalizeDomain = (domain: string): string => {
   return domain.replace(/^\./, "").toLowerCase();
@@ -46,6 +47,88 @@ export const buildOrigins = (domains: Set<string>): string[] => {
   return origins;
 };
 
+export const isTrackingCookie = (cookie: { name: string; domain: string }): boolean => {
+  const lowerName = cookie.name.toLowerCase();
+  const lowerDomain = cookie.domain.toLowerCase();
+
+  if (TRACKING_COOKIE_KEYWORDS.some((keyword) => lowerName.includes(keyword))) {
+    return true;
+  }
+
+  if (THIRD_PARTY_TRACKERS.some((tracker) => lowerDomain.includes(tracker))) {
+    return true;
+  }
+
+  return false;
+};
+
+export const isThirdPartyCookie = (cookieDomain: string, currentDomain?: string): boolean => {
+  if (!currentDomain) return false;
+  const normalizedCookie = normalizeDomain(cookieDomain);
+  const normalizedCurrent = normalizeDomain(currentDomain);
+  return !isDomainMatch(normalizedCookie, normalizedCurrent);
+};
+
+export const assessCookieRisk = (
+  cookie: { name: string; domain: string; httpOnly: boolean; secure?: boolean },
+  currentDomain?: string
+): CookieRisk => {
+  let riskLevel: "low" | "medium" | "high" = "low";
+  const reasons: string[] = [];
+
+  const isTracking = isTrackingCookie(cookie);
+  const isThirdParty = isThirdPartyCookie(cookie.domain, currentDomain);
+
+  if (isTracking) {
+    riskLevel = "high";
+    reasons.push("疑似追踪 Cookie");
+  }
+
+  if (isThirdParty) {
+    if (riskLevel === "low") riskLevel = "medium";
+    reasons.push("第三方 Cookie");
+  }
+
+  if (!cookie.httpOnly) {
+    if (riskLevel === "low") riskLevel = "medium";
+    reasons.push("非 HttpOnly（可被 JavaScript 访问）");
+  }
+
+  if (!cookie.secure && cookie.domain.startsWith(".")) {
+    if (riskLevel === "low") riskLevel = "medium";
+    reasons.push("非 Secure（可能在不安全连接中传输）");
+  }
+
+  return {
+    level: riskLevel,
+    reason: reasons.length > 0 ? reasons.join("、") : "低风险",
+    isTracking,
+    isThirdParty,
+  };
+};
+
+export const getRiskLevelColor = (level: string): string => {
+  switch (level) {
+    case "high":
+      return "#ef4444";
+    case "medium":
+      return "#f59e0b";
+    default:
+      return "#22c55e";
+  }
+};
+
+export const getRiskLevelText = (level: string): string => {
+  switch (level) {
+    case "high":
+      return "高风险";
+    case "medium":
+      return "中风险";
+    default:
+      return "低风险";
+  }
+};
+
 export interface ClearBrowserDataOptions {
   clearCache?: boolean;
   clearLocalStorage?: boolean;
@@ -79,7 +162,7 @@ const buildCookieUrl = (cookie: chrome.cookies.Cookie, cleanedDomain: string): s
   return `http${cookie.secure ? "s" : ""}://${cleanedDomain}${cookie.path}`;
 };
 
-const clearSingleCookie = async (
+export const clearSingleCookie = async (
   cookie: chrome.cookies.Cookie,
   cleanedDomain: string
 ): Promise<boolean> => {
@@ -89,6 +172,39 @@ const clearSingleCookie = async (
     return true;
   } catch (e) {
     console.error(`Failed to clear cookie ${cookie.name}:`, e);
+    return false;
+  }
+};
+
+export const editCookie = async (
+  originalCookie: chrome.cookies.Cookie,
+  updates: Partial<chrome.cookies.Cookie>
+): Promise<boolean> => {
+  try {
+    const cleanedDomain = originalCookie.domain.replace(/^\./, "");
+    const url = buildCookieUrl(originalCookie, cleanedDomain);
+
+    await chrome.cookies.remove({ url, name: originalCookie.name });
+
+    const newCookie: chrome.cookies.SetDetails = {
+      url,
+      name: updates.name || originalCookie.name,
+      value: updates.value || originalCookie.value,
+      domain: originalCookie.domain,
+      path: updates.path || originalCookie.path,
+      secure: updates.secure ?? originalCookie.secure,
+      httpOnly: updates.httpOnly ?? originalCookie.httpOnly,
+      sameSite: updates.sameSite || originalCookie.sameSite,
+    };
+
+    if (updates.expirationDate || originalCookie.expirationDate) {
+      newCookie.expirationDate = updates.expirationDate || originalCookie.expirationDate;
+    }
+
+    await chrome.cookies.set(newCookie);
+    return true;
+  } catch (e) {
+    console.error("Failed to edit cookie:", e);
     return false;
   }
 };
@@ -162,4 +278,99 @@ export const clearBrowserData = async (domains: Set<string>, options: ClearBrows
       console.error("Failed to clear IndexedDB:", e);
     }
   }
+};
+
+export const groupCookiesByDomain = (
+  cookies: chrome.cookies.Cookie[]
+): Map<string, chrome.cookies.Cookie[]> => {
+  const grouped = new Map<string, chrome.cookies.Cookie[]>();
+  for (const cookie of cookies) {
+    const domain = normalizeDomain(cookie.domain);
+    let domainCookies = grouped.get(domain);
+    if (!domainCookies) {
+      domainCookies = [];
+      grouped.set(domain, domainCookies);
+    }
+    domainCookies.push(cookie);
+  }
+  return grouped;
+};
+
+export const getActionText = (action: string): string => {
+  switch (action) {
+    case "clear":
+      return "清除";
+    case "edit":
+      return "编辑";
+    case "delete":
+      return "删除";
+    case "import":
+      return "导入";
+    case "export":
+      return "导出";
+    default:
+      return "操作";
+  }
+};
+
+export const getActionColor = (action: string): string => {
+  switch (action) {
+    case "clear":
+      return "#3b82f6";
+    case "edit":
+      return "#f59e0b";
+    case "delete":
+      return "#ef4444";
+    case "import":
+      return "#22c55e";
+    case "export":
+      return "#8b5cf6";
+    default:
+      return "#64748b";
+  }
+};
+
+export const formatLogTime = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  return date.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+export const maskCookieValue = (value: string, mask: string): string => {
+  if (value.length <= 8) return mask;
+  return value.substring(0, 4) + mask.substring(4);
+};
+
+export const getCookieKey = (name: string, domain: string): string => {
+  return `${name}-${domain}`;
+};
+
+export const toggleSetValue = (set: Set<string>, value: string): Set<string> => {
+  const next = new Set(set);
+  if (next.has(value)) {
+    next.delete(value);
+  } else {
+    next.add(value);
+  }
+  return next;
+};
+
+export const validateDomain = (domain: string): { valid: boolean; message?: string } => {
+  const trimmed = domain.trim();
+  if (!trimmed) {
+    return { valid: false, message: "域名不能为空" };
+  }
+  if (
+    !/^[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/.test(
+      trimmed
+    )
+  ) {
+    return { valid: false, message: "域名格式不正确" };
+  }
+  return { valid: true };
 };

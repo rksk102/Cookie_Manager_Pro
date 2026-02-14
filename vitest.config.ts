@@ -16,7 +16,13 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      "~utils/cleanup": path.resolve(__dirname, "utils/cleanup.ts"),
       "~": path.resolve(__dirname),
+      "~store": path.resolve(__dirname, "store.ts"),
+      "~types": path.resolve(__dirname, "types/index.ts"),
+      "~utils": path.resolve(__dirname, "utils.ts"),
+      "~constants": path.resolve(__dirname, "constants.ts"),
+      "~components": path.resolve(__dirname, "components"),
     },
   },
 });

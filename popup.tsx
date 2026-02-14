@@ -22,12 +22,12 @@ import type {
   Cookie,
 } from "~types";
 import { CookieClearType, ThemeMode, LogRetention, ModeType } from "~types";
-import { isDomainMatch, isInList } from "~utils";
+import { isDomainMatch, isInList, isTrackingCookie, isThirdPartyCookie } from "~utils";
 import {
   performCleanupWithFilter,
   cleanupExpiredCookies as cleanupExpiredCookiesUtil,
+  performCleanup,
 } from "~utils/cleanup";
-import { performCleanup } from "~utils/cleanup";
 import { MESSAGE_DURATION } from "~constants";
 import "./style.css";
 
@@ -48,6 +48,8 @@ function IndexPopup() {
     current: 0,
     session: 0,
     persistent: 0,
+    thirdParty: 0,
+    tracking: 0,
   });
   const [currentCookies, setCurrentCookies] = useState<Cookie[]>([]);
   const [systemTheme, setSystemTheme] = useState<"light" | "dark">(() => {
@@ -92,11 +94,18 @@ function IndexPopup() {
       const sessionCookies = currentCookiesList.filter((c) => !c.expirationDate);
       const persistentCookies = currentCookiesList.filter((c) => c.expirationDate);
 
+      const thirdPartyCookies = currentCookiesList.filter((c) =>
+        isThirdPartyCookie(c.domain, currentDomain)
+      );
+      const trackingCookies = currentCookiesList.filter((c) => isTrackingCookie(c));
+
       setStats({
         total: allCookies.length,
         current: currentCookiesList.length,
         session: sessionCookies.length,
         persistent: persistentCookies.length,
+        thirdParty: thirdPartyCookies.length,
+        tracking: trackingCookies.length,
       });
       setCurrentCookies(
         currentCookiesList.map((c) => ({
@@ -118,13 +127,21 @@ function IndexPopup() {
   }, [currentDomain, showMessage]);
 
   const addLog = useCallback(
-    (domain: string, cookieType: CookieClearType, count: number) => {
+    (
+      domain: string,
+      cookieType: CookieClearType,
+      count: number,
+      action: "clear" | "edit" | "delete" | "import" | "export" = "clear",
+      details?: string
+    ) => {
       const newLog: ClearLogEntry = {
         id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         domain,
         cookieType,
         count,
         timestamp: Date.now(),
+        action,
+        details,
       };
 
       if (settings.logRetention === LogRetention.FOREVER) {
@@ -416,6 +433,14 @@ function IndexPopup() {
                   <span className="stat-label">持久</span>
                   <span className="stat-value">{stats.persistent}</span>
                 </div>
+                <div className="stat-item">
+                  <span className="stat-label">第三方</span>
+                  <span className="stat-value">{stats.thirdParty}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">追踪</span>
+                  <span className="stat-value">{stats.tracking}</span>
+                </div>
               </div>
             </div>
 
@@ -454,7 +479,12 @@ function IndexPopup() {
               </div>
             </div>
 
-            <CookieList cookies={currentCookies} />
+            <CookieList
+              cookies={currentCookies}
+              currentDomain={currentDomain}
+              onUpdate={updateStats}
+              onMessage={(text, isError = false) => showMessage(text, isError)}
+            />
           </div>
         )}
 

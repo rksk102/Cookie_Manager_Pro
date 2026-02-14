@@ -1,6 +1,6 @@
 import { Storage } from "@plasmohq/storage";
-import { CookieClearType, LogRetention, ThemeMode, ModeType } from "~types";
-import type { Settings } from "~types";
+import { CookieClearType, LogRetention, ThemeMode, ModeType, ScheduleInterval } from "~types";
+import type { Settings, CustomTheme } from "~types";
 
 export const storage = new Storage();
 
@@ -20,6 +20,23 @@ export const LOG_RETENTION_MAP: Record<string, number> = {
   [LogRetention.THIRTY_DAYS]: 30 * 24 * 60 * 60 * 1000,
 };
 
+export const SCHEDULE_INTERVAL_MAP: Record<string, number> = {
+  [ScheduleInterval.HOURLY]: 1 * 60 * 60 * 1000,
+  [ScheduleInterval.DAILY]: 24 * 60 * 60 * 1000,
+  [ScheduleInterval.WEEKLY]: 7 * 24 * 60 * 60 * 1000,
+};
+
+export const DEFAULT_CUSTOM_THEME: CustomTheme = {
+  primary: "#3b82f6",
+  success: "#22c55e",
+  warning: "#f59e0b",
+  danger: "#ef4444",
+  bgPrimary: "#ffffff",
+  bgSecondary: "#f8fafc",
+  textPrimary: "#0f172a",
+  textSecondary: "#475569",
+};
+
 export const DEFAULT_SETTINGS: Settings = {
   clearType: CookieClearType.ALL,
   logRetention: LogRetention.SEVEN_DAYS,
@@ -32,4 +49,9 @@ export const DEFAULT_SETTINGS: Settings = {
   cleanupOnTabDiscard: false,
   cleanupOnStartup: false,
   cleanupExpiredCookies: false,
+  customTheme: DEFAULT_CUSTOM_THEME,
+  scheduleInterval: ScheduleInterval.DISABLED,
+  enablePrivacyProtection: true,
+  showCookieRisk: true,
+  blockThirdPartyCookies: false,
 };
