@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import type { Cookie, SameSite } from "~types";
 
 interface Props {
@@ -20,18 +20,13 @@ const DEFAULT_COOKIE: Cookie = {
 
 export const CookieEditor = ({ isOpen, cookie, onClose, onSave }: Props) => {
   const [formData, setFormData] = useState<Cookie>(DEFAULT_COOKIE);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  const [prevCookie, setPrevCookie] = useState(cookie);
 
-  const currentCookie = useMemo(() => {
-    if (!isOpen) return null;
-    return cookie || DEFAULT_COOKIE;
-  }, [isOpen, cookie]);
-
-  const initialFormData = useMemo(() => {
-    return currentCookie || DEFAULT_COOKIE;
-  }, [currentCookie]);
-
-  if (isOpen && initialFormData !== formData) {
-    setFormData(initialFormData);
+  if (isOpen && (prevIsOpen !== isOpen || prevCookie !== cookie)) {
+    setFormData(cookie || DEFAULT_COOKIE);
+    setPrevIsOpen(isOpen);
+    setPrevCookie(cookie);
   }
 
   const handleSubmit = (e: React.FormEvent) => {

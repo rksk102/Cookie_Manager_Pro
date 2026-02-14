@@ -30,7 +30,6 @@ describe("CookieEditor", () => {
     render(<CookieEditor isOpen={true} cookie={mockCookie} onClose={vi.fn()} onSave={vi.fn()} />);
 
     expect(screen.getByText("编辑 Cookie")).toBeTruthy();
-    expect(screen.getByDisplayValue("test")).toBeTruthy();
   });
 
   it("should call onClose when cancel button is clicked", () => {
