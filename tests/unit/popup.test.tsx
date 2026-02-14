@@ -370,4 +370,110 @@ describe("IndexPopup", () => {
       expect(screen.getByText(/已清除/)).toBeTruthy();
     });
   });
+
+  it("should display stat values", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    await waitFor(() => {
+      const statValues = document.querySelectorAll(".stat-value");
+      expect(statValues.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("should have correct tab structure", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs.length).toBe(4);
+  });
+
+  it("should have correct aria attributes on tabs", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const manageTab = screen.getByRole("tab", { name: /管理/ });
+    expect(manageTab.getAttribute("aria-selected")).toBe("true");
+    expect(manageTab.getAttribute("tabindex")).toBe("0");
+  });
+
+  it("should update aria-selected when tab changes", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const settingsTab = screen.getByRole("tab", { name: /设置/ });
+    fireEvent.click(settingsTab);
+
+    await waitFor(() => {
+      expect(settingsTab.getAttribute("aria-selected")).toBe("true");
+    });
+  });
+
+  it("should render container with theme class", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const container = document.querySelector(".container");
+    expect(container?.className).toMatch(/theme-/);
+  });
+
+  it("should render cookie list component", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Cookie 详情/)).toBeTruthy();
+    });
+  });
+
+  it("should handle cookies change event", async () => {
+    const addListenerMock = chrome.cookies.onChanged.addListener as ReturnType<typeof vi.fn>;
+
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    expect(addListenerMock).toHaveBeenCalled();
+  });
+
+  it("should handle multiple cookies with different domains", async () => {
+    (chrome.cookies.getAll as ReturnType<typeof vi.fn>).mockImplementation(() =>
+      Promise.resolve([
+        {
+          name: "test1",
+          value: "value1",
+          domain: ".example.com",
+          path: "/",
+          secure: true,
+          httpOnly: false,
+          sameSite: "lax",
+        },
+        {
+          name: "test2",
+          value: "value2",
+          domain: ".other.com",
+          path: "/",
+          secure: false,
+          httpOnly: false,
+          sameSite: "lax",
+        },
+      ])
+    );
+
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    await waitFor(() => {
+      const statValues = document.querySelectorAll(".stat-value");
+      expect(statValues[0].textContent).toBe("2");
+    });
+  });
 });

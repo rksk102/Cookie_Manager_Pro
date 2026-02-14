@@ -44,6 +44,10 @@ export const CookieEditor = ({ isOpen, cookie, onClose, onSave }: Props) => {
     }
   };
 
+  const handleDialogKeyDown = (e: React.KeyboardEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <div
       className="confirm-overlay"
@@ -55,6 +59,7 @@ export const CookieEditor = ({ isOpen, cookie, onClose, onSave }: Props) => {
       <div
         className="confirm-dialog cookie-editor-dialog"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleDialogKeyDown}
         role="dialog"
         aria-modal="true"
       >
