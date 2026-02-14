@@ -524,9 +524,11 @@ describe("clearSingleCookie", () => {
       path: "/",
       secure: true,
       httpOnly: false,
-      sameSite: "lax" as const,
+      sameSite: "lax",
       storeId: "0",
-    };
+      session: false,
+      hostOnly: false,
+    } as chrome.cookies.Cookie;
     vi.spyOn(chrome.cookies, "remove").mockResolvedValue(undefined);
 
     const result = await clearSingleCookie(mockCookie, "example.com");
@@ -541,9 +543,11 @@ describe("clearSingleCookie", () => {
       path: "/",
       secure: true,
       httpOnly: false,
-      sameSite: "lax" as const,
+      sameSite: "lax",
       storeId: "0",
-    };
+      session: false,
+      hostOnly: false,
+    } as chrome.cookies.Cookie;
     vi.spyOn(chrome.cookies, "remove").mockRejectedValue(new Error("Failed"));
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -567,9 +571,11 @@ describe("editCookie", () => {
       path: "/",
       secure: false,
       httpOnly: false,
-      sameSite: "lax" as const,
+      sameSite: "lax",
       storeId: "0",
-    };
+      session: false,
+      hostOnly: false,
+    } as chrome.cookies.Cookie;
     const updates = { value: "new", secure: true };
 
     vi.spyOn(chrome.cookies, "remove").mockResolvedValue(undefined);
@@ -587,10 +593,12 @@ describe("editCookie", () => {
       path: "/",
       secure: false,
       httpOnly: false,
-      sameSite: "lax" as const,
+      sameSite: "lax",
       expirationDate: Date.now() / 1000 + 3600,
       storeId: "0",
-    };
+      session: false,
+      hostOnly: false,
+    } as chrome.cookies.Cookie;
     const updates = { expirationDate: Date.now() / 1000 + 7200 };
 
     vi.spyOn(chrome.cookies, "remove").mockResolvedValue(undefined);
@@ -608,9 +616,11 @@ describe("editCookie", () => {
       path: "/",
       secure: false,
       httpOnly: false,
-      sameSite: "lax" as const,
+      sameSite: "lax",
       storeId: "0",
-    };
+      session: false,
+      hostOnly: false,
+    } as chrome.cookies.Cookie;
     vi.spyOn(chrome.cookies, "remove").mockRejectedValue(new Error("Failed"));
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -624,9 +634,9 @@ describe("editCookie", () => {
 describe("groupCookiesByDomain", () => {
   it("should group cookies by domain", () => {
     const cookies = [
-      { name: "test1", domain: ".example.com", path: "/", storeId: "0" } as chrome.cookies.Cookie,
-      { name: "test2", domain: "example.com", path: "/", storeId: "0" } as chrome.cookies.Cookie,
-      { name: "test3", domain: "test.com", path: "/", storeId: "0" } as chrome.cookies.Cookie,
+      { name: "test1", value: "v1", domain: ".example.com", path: "/", secure: false, httpOnly: false, sameSite: "lax", session: false, hostOnly: false, storeId: "0" } as chrome.cookies.Cookie,
+      { name: "test2", value: "v2", domain: "example.com", path: "/", secure: false, httpOnly: false, sameSite: "lax", session: false, hostOnly: false, storeId: "0" } as chrome.cookies.Cookie,
+      { name: "test3", value: "v3", domain: "test.com", path: "/", secure: false, httpOnly: false, sameSite: "lax", session: false, hostOnly: false, storeId: "0" } as chrome.cookies.Cookie,
     ];
 
     const grouped = groupCookiesByDomain(cookies);
@@ -642,8 +652,8 @@ describe("groupCookiesByDomain", () => {
 
   it("should normalize domain names", () => {
     const cookies = [
-      { name: "test1", domain: ".EXAMPLE.COM", path: "/", storeId: "0" } as chrome.cookies.Cookie,
-      { name: "test2", domain: "Example.Com", path: "/", storeId: "0" } as chrome.cookies.Cookie,
+      { name: "test1", value: "v1", domain: ".EXAMPLE.COM", path: "/", secure: false, httpOnly: false, sameSite: "lax", session: false, hostOnly: false, storeId: "0" } as chrome.cookies.Cookie,
+      { name: "test2", value: "v2", domain: "Example.Com", path: "/", secure: false, httpOnly: false, sameSite: "lax", session: false, hostOnly: false, storeId: "0" } as chrome.cookies.Cookie,
     ];
 
     const grouped = groupCookiesByDomain(cookies);
