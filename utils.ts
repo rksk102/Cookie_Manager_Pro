@@ -286,10 +286,12 @@ export const groupCookiesByDomain = (
   const grouped = new Map<string, chrome.cookies.Cookie[]>();
   for (const cookie of cookies) {
     const domain = normalizeDomain(cookie.domain);
-    if (!grouped.has(domain)) {
-      grouped.set(domain, []);
+    let domainCookies = grouped.get(domain);
+    if (!domainCookies) {
+      domainCookies = [];
+      grouped.set(domain, domainCookies);
     }
-    grouped.get(domain)!.push(cookie);
+    domainCookies.push(cookie);
   }
   return grouped;
 };
