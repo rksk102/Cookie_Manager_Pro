@@ -161,7 +161,9 @@ describe("CookieList", () => {
     fireEvent.click(headerButton);
 
     const domainButtons = screen.getAllByRole("button");
-    const domainButton = domainButtons.find((btn) => btn.textContent?.includes("example.com"));
+    const domainButton = domainButtons.find(
+      (btn) => btn.textContent === "example.com" || btn.textContent?.startsWith("example.com ")
+    );
     if (domainButton) {
       fireEvent.click(domainButton);
     }

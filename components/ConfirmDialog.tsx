@@ -32,6 +32,16 @@ export function ConfirmDialog({
     [onCancel]
   );
 
+  const handleOverlayKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onCancel();
+      }
+    },
+    [onCancel]
+  );
+
   useEffect(() => {
     if (isOpen && confirmBtnRef.current) {
       confirmBtnRef.current.focus();
@@ -58,6 +68,7 @@ export function ConfirmDialog({
       aria-modal="true"
       aria-labelledby="confirm-title"
       onClick={handleOverlayClick}
+      onKeyDown={handleOverlayKeyDown}
       tabIndex={-1}
     >
       <div className="confirm-dialog">
