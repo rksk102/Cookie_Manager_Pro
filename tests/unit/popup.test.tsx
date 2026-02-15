@@ -15,6 +15,7 @@ vi.mock("~utils", () => ({
   isInList: vi.fn(() => false),
   isTrackingCookie: vi.fn(() => false),
   isThirdPartyCookie: vi.fn(() => false),
+  isSensitiveCookie: vi.fn(() => false),
   normalizeDomain: vi.fn((d: string) => d.replace(/^\./, "").toLowerCase()),
   assessCookieRisk: vi.fn(() => ({ level: "low", reason: "安全" })),
   getRiskLevelColor: vi.fn(() => "#22c55e"),
@@ -1287,5 +1288,125 @@ describe("IndexPopup", () => {
     });
 
     expect(settingsMock).toHaveBeenCalled();
+  });
+
+  it("should handle arrow right key for tab navigation", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const manageTab = screen.getByRole("tab", { name: /管理/ });
+    const tablist = document.querySelector('[role="tablist"]');
+
+    expect(manageTab.getAttribute("aria-selected")).toBe("true");
+
+    if (tablist) {
+      fireEvent.keyDown(tablist, { key: "ArrowRight" });
+    }
+
+    await waitFor(() => {
+      const whitelistTab = screen.getByRole("tab", { name: /白名单/ });
+      expect(whitelistTab.getAttribute("aria-selected")).toBe("true");
+    });
+  });
+
+  it("should handle arrow left key for tab navigation", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const manageTab = screen.getByRole("tab", { name: /管理/ });
+    const tablist = document.querySelector('[role="tablist"]');
+
+    expect(manageTab.getAttribute("aria-selected")).toBe("true");
+
+    if (tablist) {
+      fireEvent.keyDown(tablist, { key: "ArrowLeft" });
+    }
+
+    await waitFor(() => {
+      const logTab = screen.getByRole("tab", { name: /日志/ });
+      expect(logTab.getAttribute("aria-selected")).toBe("true");
+    });
+  });
+
+  it("should handle Home key for tab navigation", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const settingsTab = screen.getByRole("tab", { name: /设置/ });
+    fireEvent.click(settingsTab);
+
+    await waitFor(() => {
+      expect(settingsTab.getAttribute("aria-selected")).toBe("true");
+    });
+
+    const tablist = document.querySelector('[role="tablist"]');
+    if (tablist) {
+      fireEvent.keyDown(tablist, { key: "Home" });
+    }
+
+    await waitFor(() => {
+      const manageTab = screen.getByRole("tab", { name: /管理/ });
+      expect(manageTab.getAttribute("aria-selected")).toBe("true");
+    });
+  });
+
+  it("should handle End key for tab navigation", async () => {
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const manageTab = screen.getByRole("tab", { name: /管理/ });
+    expect(manageTab.getAttribute("aria-selected")).toBe("true");
+
+    const tablist = document.querySelector('[role="tablist"]');
+    if (tablist) {
+      fireEvent.keyDown(tablist, { key: "End" });
+    }
+
+    await waitFor(() => {
+      const logTab = screen.getByRole("tab", { name: /日志/ });
+      expect(logTab.getAttribute("aria-selected")).toBe("true");
+    });
+  });
+
+  it("should apply custom theme CSS variables when theme is custom", async () => {
+    const { useStorage } = await import("@plasmohq/storage/hook");
+
+    (useStorage as ReturnType<typeof vi.fn>).mockImplementation((key: string) => {
+      if (key === "settings") {
+        return [
+          {
+            mode: "whitelist",
+            themeMode: "custom",
+            customTheme: {
+              primary: "#ff0000",
+              success: "#00ff00",
+              warning: "#ffff00",
+              danger: "#0000ff",
+              bgPrimary: "#ffffff",
+              textPrimary: "#000000",
+            },
+            clearType: "all",
+            clearCache: false,
+            clearLocalStorage: false,
+            clearIndexedDB: false,
+            cleanupOnStartup: false,
+            cleanupExpiredCookies: false,
+            logRetention: "7d",
+          },
+        ];
+      }
+      return [[]];
+    });
+
+    await act(async () => {
+      render(<IndexPopup />);
+    });
+
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--primary-500")).toBe("#ff0000");
   });
 });

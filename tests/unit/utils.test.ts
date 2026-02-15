@@ -22,6 +22,7 @@ import {
   getCookieKey,
   toggleSetValue,
   validateDomain,
+  isSensitiveCookie,
 } from "../../utils";
 import { CookieClearType } from "../../types";
 
@@ -905,5 +906,54 @@ describe("validateDomain", () => {
     expect(validateDomain("-example.com").valid).toBe(false);
     expect(validateDomain("example.com-").valid).toBe(false);
     expect(validateDomain("example..com").valid).toBe(false);
+  });
+});
+
+describe("isSensitiveCookie", () => {
+  it("should detect session cookie as sensitive", () => {
+    expect(isSensitiveCookie({ name: "session" })).toBe(true);
+    expect(isSensitiveCookie({ name: "SESSION" })).toBe(true);
+    expect(isSensitiveCookie({ name: "user_session" })).toBe(true);
+  });
+
+  it("should detect auth cookie as sensitive", () => {
+    expect(isSensitiveCookie({ name: "auth" })).toBe(true);
+    expect(isSensitiveCookie({ name: "AUTH_TOKEN" })).toBe(true);
+    expect(isSensitiveCookie({ name: "user_auth" })).toBe(true);
+  });
+
+  it("should detect token cookie as sensitive", () => {
+    expect(isSensitiveCookie({ name: "token" })).toBe(true);
+    expect(isSensitiveCookie({ name: "access_token" })).toBe(true);
+    expect(isSensitiveCookie({ name: "csrf_token" })).toBe(true);
+  });
+
+  it("should detect jwt cookie as sensitive", () => {
+    expect(isSensitiveCookie({ name: "jwt" })).toBe(true);
+    expect(isSensitiveCookie({ name: "JWT" })).toBe(true);
+    expect(isSensitiveCookie({ name: "jwt_token" })).toBe(true);
+  });
+
+  it("should detect sid cookie as sensitive", () => {
+    expect(isSensitiveCookie({ name: "sid" })).toBe(true);
+    expect(isSensitiveCookie({ name: "SID" })).toBe(true);
+  });
+
+  it("should detect sessid cookie as sensitive", () => {
+    expect(isSensitiveCookie({ name: "sessid" })).toBe(true);
+    expect(isSensitiveCookie({ name: "SESSID" })).toBe(true);
+  });
+
+  it("should return false for non-sensitive cookies", () => {
+    expect(isSensitiveCookie({ name: "preferences" })).toBe(false);
+    expect(isSensitiveCookie({ name: "theme" })).toBe(false);
+    expect(isSensitiveCookie({ name: "language" })).toBe(false);
+    expect(isSensitiveCookie({ name: "user_id" })).toBe(false);
+  });
+
+  it("should be case-insensitive", () => {
+    expect(isSensitiveCookie({ name: "SESSION" })).toBe(true);
+    expect(isSensitiveCookie({ name: "AuthToken" })).toBe(true);
+    expect(isSensitiveCookie({ name: "JWT_TOKEN" })).toBe(true);
   });
 });
