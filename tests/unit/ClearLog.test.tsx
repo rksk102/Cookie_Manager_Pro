@@ -1,6 +1,58 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { useState, ReactNode } from "react";
 import { ClearLog } from "../../components/ClearLog";
+
+vi.mock("../../components/ConfirmDialogWrapper", () => ({
+  ConfirmDialogWrapper: ({
+    children,
+  }: {
+    children: (
+      showConfirm: (
+        title: string,
+        message: string,
+        variant: string,
+        onConfirm: () => void
+      ) => ReactNode
+    ) => ReactNode;
+  }) => {
+    const MockWrapper = () => {
+      const [isOpen, setIsOpen] = useState(false);
+      const [confirmCallback, setConfirmCallback] = useState<(() => void) | null>(null);
+
+      const showConfirm = (
+        _title: string,
+        _message: string,
+        _variant: string,
+        onConfirm: () => void
+      ) => {
+        setConfirmCallback(() => onConfirm);
+        setIsOpen(true);
+      };
+
+      return (
+        <>
+          {children(showConfirm)}
+          {isOpen && (
+            <div className="confirm-dialog">
+              <p>确定要清除所有日志记录吗？</p>
+              <button
+                onClick={() => {
+                  confirmCallback?.();
+                  setIsOpen(false);
+                }}
+              >
+                确定
+              </button>
+              <button onClick={() => setIsOpen(false)}>取消</button>
+            </div>
+          )}
+        </>
+      );
+    };
+    return <MockWrapper />;
+  },
+}));
 
 describe("ClearLog", () => {
   const mockOnMessage = vi.fn();
@@ -48,7 +100,7 @@ describe("ClearLog", () => {
     const clearAllButton = screen.getByText("清除全部");
     fireEvent.click(clearAllButton);
 
-    expect(screen.getByText("确定要清除所有日志记录吗？")).toBeTruthy();
+    expect(screen.getByText("确定要清除所有日志记录吗？")).toBeInTheDocument();
   });
 
   it("should clear logs when confirm is accepted", () => {

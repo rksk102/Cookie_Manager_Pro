@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { useState, ReactNode } from "react";
 import { CookieList } from "../../components/CookieList";
 
 const mockCookies = [
@@ -84,6 +85,56 @@ vi.mock("../../components/CookieEditor", () => ({
         </button>
       </div>
     );
+  },
+}));
+
+vi.mock("../../components/ConfirmDialogWrapper", () => ({
+  ConfirmDialogWrapper: ({
+    children,
+  }: {
+    children: (
+      showConfirm: (
+        title: string,
+        message: string,
+        variant: string,
+        onConfirm: () => void
+      ) => ReactNode
+    ) => ReactNode;
+  }) => {
+    const MockWrapper = () => {
+      const [isOpen, setIsOpen] = useState(false);
+      const [confirmCallback, setConfirmCallback] = useState<(() => void) | null>(null);
+
+      const showConfirm = (
+        _title: string,
+        _message: string,
+        _variant: string,
+        onConfirm: () => void
+      ) => {
+        setConfirmCallback(() => onConfirm);
+        setIsOpen(true);
+      };
+
+      return (
+        <>
+          {children(showConfirm)}
+          {isOpen && (
+            <div className="confirm-dialog">
+              <button
+                onClick={() => {
+                  confirmCallback?.();
+                  setIsOpen(false);
+                }}
+              >
+                确定
+              </button>
+              <button onClick={() => setIsOpen(false)}>取消</button>
+            </div>
+          )}
+        </>
+      );
+    };
+    return <MockWrapper />;
   },
 }));
 
