@@ -28,7 +28,7 @@ import {
   cleanupExpiredCookies as cleanupExpiredCookiesUtil,
   performCleanup,
 } from "~utils/cleanup";
-import { MESSAGE_DURATION } from "~constants";
+import { MESSAGE_DURATION, DEBOUNCE_DELAY_MS } from "~constants";
 import "./style.css";
 
 interface ConfirmState {
@@ -79,6 +79,42 @@ function IndexPopup() {
     }
     return themeMode;
   }, [settings.themeMode, systemTheme]);
+
+  const tabs = useMemo(
+    () => [
+      { id: "manage", label: "管理", icon: "🏠" },
+      {
+        id: settings.mode === ModeType.WHITELIST ? "whitelist" : "blacklist",
+        label: settings.mode === ModeType.WHITELIST ? "白名单" : "黑名单",
+        icon: "📝",
+      },
+      { id: "settings", label: "设置", icon: "⚙️" },
+      { id: "log", label: "日志", icon: "📋" },
+    ],
+    [settings.mode]
+  );
+
+  const handleTabKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const currentIndex = tabs.findIndex((t) => t.id === activeTab);
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        const nextIndex = (currentIndex + 1) % tabs.length;
+        setActiveTab(tabs[nextIndex].id);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        const prevIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        setActiveTab(tabs[prevIndex].id);
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        setActiveTab(tabs[0].id);
+      } else if (e.key === "End") {
+        e.preventDefault();
+        setActiveTab(tabs[tabs.length - 1].id);
+      }
+    },
+    [activeTab, tabs]
+  );
 
   const showMessage = useCallback((text: string, isError = false) => {
     setMessage({ text, isError, visible: true });
@@ -305,7 +341,7 @@ function IndexPopup() {
       }
       debounceTimerRef.current = setTimeout(() => {
         updateStats();
-      }, 300);
+      }, DEBOUNCE_DELAY_MS);
     };
 
     chrome.cookies.onChanged.addListener(cookieListener);
@@ -328,6 +364,19 @@ function IndexPopup() {
     mediaQuery.addEventListener("change", handler);
     return () => mediaQuery.removeEventListener("change", handler);
   }, []);
+
+  useEffect(() => {
+    if (settings.themeMode === ThemeMode.CUSTOM && settings.customTheme) {
+      const root = document.documentElement;
+      const { primary, success, warning, danger, background, text } = settings.customTheme;
+      if (primary) root.style.setProperty("--primary-500", primary);
+      if (success) root.style.setProperty("--success-500", success);
+      if (warning) root.style.setProperty("--warning-500", warning);
+      if (danger) root.style.setProperty("--danger-500", danger);
+      if (background) root.style.setProperty("--bg-primary", background);
+      if (text) root.style.setProperty("--text-primary", text);
+    }
+  }, [settings.themeMode, settings.customTheme]);
 
   useEffect(() => {
     async function init() {
@@ -369,17 +418,8 @@ function IndexPopup() {
           </h1>
         </header>
 
-        <div className="tabs" role="tablist">
-          {[
-            { id: "manage", label: "管理", icon: "🏠" },
-            {
-              id: settings.mode === ModeType.WHITELIST ? "whitelist" : "blacklist",
-              label: settings.mode === ModeType.WHITELIST ? "白名单" : "黑名单",
-              icon: "📝",
-            },
-            { id: "settings", label: "设置", icon: "⚙️" },
-            { id: "log", label: "日志", icon: "📋" },
-          ].map((tab) => (
+        <div className="tabs" role="tablist" onKeyDown={handleTabKeyDown}>
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}

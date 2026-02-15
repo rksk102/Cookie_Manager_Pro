@@ -18,24 +18,16 @@ const DEFAULT_COOKIE: Cookie = {
   sameSite: "unspecified",
 };
 
-export const CookieEditor = ({ isOpen, cookie, onClose, onSave }: Props) => {
-  const [formData, setFormData] = useState<Cookie>(DEFAULT_COOKIE);
-  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
-  const [prevCookie, setPrevCookie] = useState(cookie);
-
-  if (isOpen && (prevIsOpen !== isOpen || prevCookie !== cookie)) {
-    setFormData(cookie || DEFAULT_COOKIE);
-    setPrevIsOpen(isOpen);
-    setPrevCookie(cookie);
-  }
+const CookieEditorContent = ({ cookie, onClose, onSave }: Omit<Props, "isOpen">) => {
+  const [formData, setFormData] = useState<Cookie>(() =>
+    cookie ? { ...cookie } : { ...DEFAULT_COOKIE }
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
     onClose();
   };
-
-  if (!isOpen) return null;
 
   const handleOverlayKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -161,5 +153,18 @@ export const CookieEditor = ({ isOpen, cookie, onClose, onSave }: Props) => {
         </form>
       </div>
     </div>
+  );
+};
+
+export const CookieEditor = ({ isOpen, cookie, onClose, onSave }: Props) => {
+  if (!isOpen) return null;
+
+  return (
+    <CookieEditorContent
+      key={cookie ? `edit-${cookie.domain}-${cookie.name}` : "new"}
+      cookie={cookie}
+      onClose={onClose}
+      onSave={onSave}
+    />
   );
 };

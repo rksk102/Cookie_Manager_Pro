@@ -1,5 +1,9 @@
 export const MESSAGE_DURATION = 3000;
 
+export const DEBOUNCE_DELAY_MS = 300;
+
+export const ALARM_INTERVAL_MINUTES = 60;
+
 export const SENSITIVE_COOKIE_KEYWORDS = ["session", "auth", "token", "jwt", "sid", "sessid"];
 
 export const COOKIE_VALUE_MASK = "••••••••••••";

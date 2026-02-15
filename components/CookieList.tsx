@@ -1,4 +1,4 @@
-import { useState, memo, useMemo } from "react";
+import { useState, memo, useMemo, useCallback } from "react";
 import type { Cookie } from "~types";
 import { COOKIE_VALUE_MASK } from "~constants";
 import {
@@ -11,14 +11,24 @@ import {
   maskCookieValue,
   getCookieKey,
   toggleSetValue,
+  isSensitiveCookie,
 } from "~utils";
 import { CookieEditor } from "./CookieEditor";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 interface Props {
   cookies: Cookie[];
   currentDomain?: string;
   onUpdate?: () => void;
   onMessage?: (msg: string, isError?: boolean) => void;
+}
+
+interface ConfirmState {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  variant: "danger" | "warning";
+  onConfirm: () => void;
 }
 
 export const CookieList = memo(({ cookies, currentDomain, onUpdate, onMessage }: Props) => {
@@ -29,6 +39,13 @@ export const CookieList = memo(({ cookies, currentDomain, onUpdate, onMessage }:
   const [editingCookie, setEditingCookie] = useState<Cookie | null>(null);
   const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
+  const [confirmState, setConfirmState] = useState<ConfirmState>({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "warning",
+    onConfirm: () => {},
+  });
 
   const groupedCookies = useMemo(() => {
     const grouped = new Map<string, Cookie[]>();
@@ -70,7 +87,23 @@ export const CookieList = memo(({ cookies, currentDomain, onUpdate, onMessage }:
     setSelectAll(!selectAll);
   };
 
-  const handleDeleteCookie = async (cookie: Cookie, _index: number) => {
+  const showConfirm = useCallback(
+    (title: string, message: string, variant: "danger" | "warning", onConfirm: () => void) => {
+      setConfirmState({ isOpen: true, title, message, variant, onConfirm });
+    },
+    []
+  );
+
+  const closeConfirm = useCallback(() => {
+    setConfirmState((prev) => ({ ...prev, isOpen: false }));
+  }, []);
+
+  const handleConfirm = useCallback(() => {
+    confirmState.onConfirm();
+    closeConfirm();
+  }, [confirmState, closeConfirm]);
+
+  const performDeleteCookie = async (cookie: Cookie) => {
     try {
       const cleanedDomain = cookie.domain.replace(/^\./, "");
       const success = await clearSingleCookie(
@@ -87,6 +120,17 @@ export const CookieList = memo(({ cookies, currentDomain, onUpdate, onMessage }:
       console.error("Failed to delete cookie:", e);
       onMessage?.("删除 Cookie 失败", true);
     }
+  };
+
+  const handleDeleteCookie = (cookie: Cookie) => {
+    const isSensitive = isSensitiveCookie(cookie);
+    const title = isSensitive ? "删除敏感 Cookie" : "删除确认";
+    const message = isSensitive
+      ? `即将删除敏感 Cookie "${cookie.name}"，这可能导致您在该网站的登录状态失效。确定要继续吗？`
+      : `确定要删除 Cookie "${cookie.name}" 吗？`;
+    const variant = isSensitive ? "danger" : "warning";
+
+    showConfirm(title, message, variant, () => performDeleteCookie(cookie));
   };
 
   const handleEditCookie = (cookie: Cookie) => {
@@ -114,7 +158,7 @@ export const CookieList = memo(({ cookies, currentDomain, onUpdate, onMessage }:
     }
   };
 
-  const handleDeleteSelected = async () => {
+  const performDeleteSelected = async () => {
     let deleted = 0;
     for (let i = 0; i < cookies.length; i++) {
       const cookie = cookies[i];
@@ -138,6 +182,21 @@ export const CookieList = memo(({ cookies, currentDomain, onUpdate, onMessage }:
       setSelectAll(false);
       onUpdate?.();
     }
+  };
+
+  const handleDeleteSelected = () => {
+    const sensitiveCount = cookies
+      .filter((c) => selectedCookies.has(getCookieKey(c.name, c.domain)))
+      .filter((c) => isSensitiveCookie(c)).length;
+
+    const title = sensitiveCount > 0 ? "批量删除敏感 Cookie" : "批量删除确认";
+    const message =
+      sensitiveCount > 0
+        ? `选中的 Cookie 中包含 ${sensitiveCount} 个敏感 Cookie，删除后可能影响登录状态。确定要删除选中的 ${selectedCookies.size} 个 Cookie 吗？`
+        : `确定要删除选中的 ${selectedCookies.size} 个 Cookie 吗？`;
+    const variant = sensitiveCount > 0 ? "danger" : "warning";
+
+    showConfirm(title, message, variant, performDeleteSelected);
   };
 
   const handleAddToWhitelist = () => {
@@ -221,6 +280,7 @@ export const CookieList = memo(({ cookies, currentDomain, onUpdate, onMessage }:
                   type="button"
                   className="domain-group-header"
                   onClick={() => toggleDomainExpansion(domain)}
+                  aria-expanded={expandedDomains.has(domain)}
                 >
                   <span className="domain-name">🌐 {domain}</span>
                   <span className="domain-count">({domainCookies.length})</span>
@@ -239,6 +299,7 @@ export const CookieList = memo(({ cookies, currentDomain, onUpdate, onMessage }:
                         : maskCookieValue(cookie.value, COOKIE_VALUE_MASK);
                       const risk = assessCookieRisk(cookie, currentDomain);
                       const isSelected = selectedCookies.has(key);
+                      const isSensitive = isSensitiveCookie(cookie);
 
                       return (
                         <div key={key} className={`cookie-item ${isSelected ? "selected" : ""}`}>
@@ -251,7 +312,14 @@ export const CookieList = memo(({ cookies, currentDomain, onUpdate, onMessage }:
                               />
                             </label>
                             <div className="cookie-name">
-                              <strong>{cookie.name}</strong>
+                              <strong>
+                                {cookie.name}
+                                {isSensitive && (
+                                  <span className="sensitive-badge" title="敏感 Cookie">
+                                    🔐
+                                  </span>
+                                )}
+                              </strong>
                               <span className="cookie-domain">{cookie.domain}</span>
                             </div>
                             <div className="cookie-actions">
@@ -266,7 +334,7 @@ export const CookieList = memo(({ cookies, currentDomain, onUpdate, onMessage }:
                               <button
                                 type="button"
                                 className="action-btn action-btn-danger"
-                                onClick={() => handleDeleteCookie(cookie, cookies.indexOf(cookie))}
+                                onClick={() => handleDeleteCookie(cookie)}
                                 aria-label="删除"
                               >
                                 🗑️
@@ -343,6 +411,15 @@ export const CookieList = memo(({ cookies, currentDomain, onUpdate, onMessage }:
         cookie={editingCookie}
         onClose={() => setShowEditor(false)}
         onSave={handleSaveCookie}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        onConfirm={handleConfirm}
+        onCancel={closeConfirm}
       />
     </div>
   );

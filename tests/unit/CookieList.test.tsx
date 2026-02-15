@@ -54,6 +54,7 @@ vi.mock("../../utils", () => ({
     }
     return next;
   }),
+  isSensitiveCookie: vi.fn(() => false),
 }));
 
 vi.mock("../../components/CookieEditor", () => ({
@@ -322,6 +323,9 @@ describe("CookieList", () => {
     const deleteBtn = screen.getByText("删除选中");
     fireEvent.click(deleteBtn);
 
+    const confirmButton = screen.getByText("确定");
+    fireEvent.click(confirmButton);
+
     await waitFor(() => {
       expect(mockOnUpdate).toHaveBeenCalled();
     });
@@ -355,6 +359,9 @@ describe("CookieList", () => {
     if (deleteButtons.length > 0) {
       fireEvent.click(deleteButtons[0]);
     }
+
+    const confirmButton = screen.getByText("确定");
+    fireEvent.click(confirmButton);
 
     await waitFor(() => {
       expect(mockOnMessage).toHaveBeenCalled();
@@ -560,6 +567,9 @@ describe("CookieList", () => {
       fireEvent.click(deleteButtons[0]);
     }
 
+    const confirmButton = screen.getByText("确定");
+    fireEvent.click(confirmButton);
+
     await waitFor(() => {
       expect(mockOnMessage).toHaveBeenCalledWith("删除 Cookie 失败", true);
     });
@@ -593,6 +603,9 @@ describe("CookieList", () => {
     if (deleteButtons.length > 0) {
       fireEvent.click(deleteButtons[0]);
     }
+
+    const confirmButton = screen.getByText("确定");
+    fireEvent.click(confirmButton);
 
     await waitFor(() => {
       expect(mockOnMessage).toHaveBeenCalledWith("删除 Cookie 失败", true);
@@ -704,6 +717,9 @@ describe("CookieList", () => {
     const deleteBtn = screen.getByText("删除选中");
     fireEvent.click(deleteBtn);
 
+    const confirmButton = screen.getByText("确定");
+    fireEvent.click(confirmButton);
+
     await waitFor(() => {
       expect(mockOnMessage).toHaveBeenCalled();
     });
@@ -729,6 +745,9 @@ describe("CookieList", () => {
 
     const deleteBtn = screen.getByText("删除选中");
     fireEvent.click(deleteBtn);
+
+    const confirmButton = screen.getByText("确定");
+    fireEvent.click(confirmButton);
 
     await waitFor(() => {
       expect(mockOnUpdate).not.toHaveBeenCalled();

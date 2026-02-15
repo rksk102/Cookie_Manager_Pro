@@ -3,21 +3,53 @@ import { CLEAR_LOG_KEY, SETTINGS_KEY, DEFAULT_SETTINGS, LOG_RETENTION_MAP } from
 import type { ClearLogEntry, Settings } from "~types";
 import { LogRetention } from "~types";
 import { getCookieTypeName, getActionText, getActionColor, formatLogTime } from "~utils";
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 interface Props {
   onMessage: (msg: string) => void;
 }
 
+interface ConfirmState {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  variant: "danger" | "warning";
+  onConfirm: () => void;
+}
+
 export const ClearLog = ({ onMessage }: Props) => {
   const [logs, setLogs] = useStorage<ClearLogEntry[]>(CLEAR_LOG_KEY, []);
   const [settings] = useStorage<Settings>(SETTINGS_KEY, DEFAULT_SETTINGS);
+  const [confirmState, setConfirmState] = useState<ConfirmState>({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "warning",
+    onConfirm: () => {},
+  });
+
+  const showConfirm = useCallback(
+    (title: string, message: string, variant: "danger" | "warning", onConfirm: () => void) => {
+      setConfirmState({ isOpen: true, title, message, variant, onConfirm });
+    },
+    []
+  );
+
+  const closeConfirm = useCallback(() => {
+    setConfirmState((prev) => ({ ...prev, isOpen: false }));
+  }, []);
+
+  const handleConfirm = useCallback(() => {
+    confirmState.onConfirm();
+    closeConfirm();
+  }, [confirmState, closeConfirm]);
 
   const clearAllLogs = () => {
-    if (confirm("确定要清除所有日志记录吗？")) {
+    showConfirm("清除日志", "确定要清除所有日志记录吗？", "danger", () => {
       setLogs([]);
       onMessage("已清除所有日志");
-    }
+    });
   };
 
   const clearOldLogs = () => {
@@ -100,6 +132,15 @@ export const ClearLog = ({ onMessage }: Props) => {
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        onConfirm={handleConfirm}
+        onCancel={closeConfirm}
+      />
     </div>
   );
 };

@@ -1,11 +1,8 @@
-import { Storage } from "@plasmohq/storage";
-import { WHITELIST_KEY, BLACKLIST_KEY, SETTINGS_KEY, DEFAULT_SETTINGS } from "~store";
+import { storage, WHITELIST_KEY, BLACKLIST_KEY, SETTINGS_KEY, DEFAULT_SETTINGS } from "~store";
 import type { Settings } from "~types";
 import { ModeType, CookieClearType } from "~types";
 import { isInList, isDomainMatch } from "~utils";
 import { clearBrowserData, clearCookies, type ClearBrowserDataOptions } from "~utils";
-
-const storage = new Storage();
 
 export interface CleanupOptions {
   domain: string;

@@ -1,5 +1,5 @@
-import { Storage } from "@plasmohq/storage";
 import {
+  storage,
   WHITELIST_KEY,
   BLACKLIST_KEY,
   SETTINGS_KEY,
@@ -9,8 +9,7 @@ import {
 import type { Settings } from "~types";
 import { performCleanup, performCleanupWithFilter } from "~utils/cleanup";
 import { CookieClearType, ScheduleInterval } from "~types";
-
-const storage = new Storage();
+import { ALARM_INTERVAL_MINUTES } from "~constants";
 
 const checkScheduledCleanup = async () => {
   try {
@@ -128,13 +127,13 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
 chrome.runtime.onStartup.addListener(async () => {
   await chrome.alarms.create("scheduled-cleanup", {
-    periodInMinutes: 60,
+    periodInMinutes: ALARM_INTERVAL_MINUTES,
   });
 });
 
 chrome.runtime.onInstalled.addListener(async () => {
   await chrome.alarms.create("scheduled-cleanup", {
-    periodInMinutes: 60,
+    periodInMinutes: ALARM_INTERVAL_MINUTES,
   });
   await checkScheduledCleanup();
 });

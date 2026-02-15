@@ -1,5 +1,9 @@
 import { CookieClearType, CookieRisk } from "./types";
-import { TRACKING_COOKIE_KEYWORDS, THIRD_PARTY_TRACKERS } from "./constants";
+import {
+  TRACKING_COOKIE_KEYWORDS,
+  THIRD_PARTY_TRACKERS,
+  SENSITIVE_COOKIE_KEYWORDS,
+} from "./constants";
 
 export const normalizeDomain = (domain: string): string => {
   return domain.replace(/^\./, "").toLowerCase();
@@ -60,6 +64,11 @@ export const isTrackingCookie = (cookie: { name: string; domain: string }): bool
   }
 
   return false;
+};
+
+export const isSensitiveCookie = (cookie: { name: string }): boolean => {
+  const lowerName = cookie.name.toLowerCase();
+  return SENSITIVE_COOKIE_KEYWORDS.some((keyword) => lowerName.includes(keyword));
 };
 
 export const isThirdPartyCookie = (cookieDomain: string, currentDomain?: string): boolean => {

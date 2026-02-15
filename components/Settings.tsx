@@ -223,19 +223,9 @@ export const Settings = ({ onMessage }: Props) => {
         <CheckboxGroup
           options={[
             {
-              checked: settings.enablePrivacyProtection,
-              label: "启用隐私保护",
-              onChange: (checked) => updateSetting("enablePrivacyProtection", checked),
-            },
-            {
               checked: settings.showCookieRisk,
               label: "显示 Cookie 风险评估",
               onChange: (checked) => updateSetting("showCookieRisk", checked),
-            },
-            {
-              checked: settings.blockThirdPartyCookies,
-              label: "警告第三方 Cookie",
-              onChange: (checked) => updateSetting("blockThirdPartyCookies", checked),
             },
           ]}
         />

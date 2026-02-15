@@ -1717,3 +1717,9 @@ header h1 {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+.sensitive-badge {
+  margin-left: var(--space-1);
+  font-size: 12px;
+  cursor: help;
+}

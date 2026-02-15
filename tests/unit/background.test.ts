@@ -22,33 +22,35 @@ vi.mock("~utils/cleanup", () => ({
   ),
 }));
 
-vi.mock("~store", () => ({
-  WHITELIST_KEY: "whitelist",
-  BLACKLIST_KEY: "blacklist",
-  SETTINGS_KEY: "settings",
-  DEFAULT_SETTINGS: {
-    clearType: "all",
-    logRetention: "7d",
-    themeMode: "auto",
-    mode: "whitelist",
-    clearLocalStorage: false,
-    clearIndexedDB: false,
-    clearCache: false,
-    enableAutoCleanup: false,
-    cleanupOnTabDiscard: false,
-    cleanupOnStartup: false,
-    cleanupExpiredCookies: false,
-    scheduleInterval: "disabled",
-    enablePrivacyProtection: true,
-    showCookieRisk: true,
-    blockThirdPartyCookies: false,
-  },
-  SCHEDULE_INTERVAL_MAP: {
-    hourly: 60 * 60 * 1000,
-    daily: 24 * 60 * 60 * 1000,
-    weekly: 7 * 24 * 60 * 60 * 1000,
-  },
-}));
+vi.mock("~store", () => {
+  const mockStorage = new MockStorage();
+  return {
+    storage: mockStorage,
+    WHITELIST_KEY: "whitelist",
+    BLACKLIST_KEY: "blacklist",
+    SETTINGS_KEY: "settings",
+    DEFAULT_SETTINGS: {
+      clearType: "all",
+      logRetention: "7d",
+      themeMode: "auto",
+      mode: "whitelist",
+      clearLocalStorage: false,
+      clearIndexedDB: false,
+      clearCache: false,
+      enableAutoCleanup: false,
+      cleanupOnTabDiscard: false,
+      cleanupOnStartup: false,
+      cleanupExpiredCookies: false,
+      scheduleInterval: "disabled",
+      showCookieRisk: true,
+    },
+    SCHEDULE_INTERVAL_MAP: {
+      hourly: 60 * 60 * 1000,
+      daily: 24 * 60 * 60 * 1000,
+      weekly: 7 * 24 * 60 * 60 * 1000,
+    },
+  };
+});
 
 const listeners = {
   onInstalled: [] as Array<() => void>,

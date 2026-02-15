@@ -91,9 +91,7 @@ export interface Settings {
   customTheme?: CustomTheme;
   scheduleInterval: ScheduleInterval;
   lastScheduledCleanup?: number;
-  enablePrivacyProtection: boolean;
   showCookieRisk: boolean;
-  blockThirdPartyCookies: boolean;
 }
 
 export interface ClearLogEntry {

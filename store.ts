@@ -51,7 +51,5 @@ export const DEFAULT_SETTINGS: Settings = {
   cleanupExpiredCookies: false,
   customTheme: DEFAULT_CUSTOM_THEME,
   scheduleInterval: ScheduleInterval.DISABLED,
-  enablePrivacyProtection: true,
   showCookieRisk: true,
-  blockThirdPartyCookies: false,
 };

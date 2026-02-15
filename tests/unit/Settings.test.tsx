@@ -131,9 +131,7 @@ describe("Settings", () => {
   it("should render privacy protection settings", () => {
     render(<Settings onMessage={mockOnMessage} />);
 
-    expect(screen.getByText("启用隐私保护")).toBeTruthy();
     expect(screen.getByText("显示 Cookie 风险评估")).toBeTruthy();
-    expect(screen.getByText("警告第三方 Cookie")).toBeTruthy();
   });
 
   it("should render advanced cleanup settings", () => {
@@ -463,12 +461,6 @@ describe("Settings", () => {
 
     fireEvent.click(checkboxes[4]);
     expect(mockOnMessage).toHaveBeenCalledTimes(1);
-
-    fireEvent.click(checkboxes[5]);
-    expect(mockOnMessage).toHaveBeenCalledTimes(2);
-
-    fireEvent.click(checkboxes[6]);
-    expect(mockOnMessage).toHaveBeenCalledTimes(3);
   });
 
   it("should handle all checkboxes in advanced cleanup section", () => {
@@ -476,13 +468,13 @@ describe("Settings", () => {
 
     const checkboxes = screen.getAllByRole("checkbox");
 
-    fireEvent.click(checkboxes[7]);
+    fireEvent.click(checkboxes[5]);
     expect(mockOnMessage).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(checkboxes[8]);
+    fireEvent.click(checkboxes[6]);
     expect(mockOnMessage).toHaveBeenCalledTimes(2);
 
-    fireEvent.click(checkboxes[9]);
+    fireEvent.click(checkboxes[7]);
     expect(mockOnMessage).toHaveBeenCalledTimes(3);
   });
 
