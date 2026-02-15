@@ -160,14 +160,14 @@ test.describe("Settings", () => {
     const settingsTab = popup.getByRole("tab", { name: /设置/ });
     await settingsTab.click();
 
-    await expect(popup.getByText("工作模式")).toBeVisible();
-    await expect(popup.getByText("Cookie清除类型")).toBeVisible();
-    await expect(popup.getByText("定时清理")).toBeVisible();
-    await expect(popup.getByText("日志保留时长")).toBeVisible();
-    await expect(popup.getByText("主题模式")).toBeVisible();
-    await expect(popup.getByText("自动清理")).toBeVisible();
-    await expect(popup.getByText("隐私保护")).toBeVisible();
-    await expect(popup.getByText("高级清理")).toBeVisible();
+    await expect(popup.getByRole("heading", { name: "工作模式" })).toBeVisible();
+    await expect(popup.getByRole("heading", { name: "Cookie清除类型" })).toBeVisible();
+    await expect(popup.getByRole("heading", { name: "定时清理" })).toBeVisible();
+    await expect(popup.getByRole("heading", { name: "日志保留时长" })).toBeVisible();
+    await expect(popup.getByRole("heading", { name: "主题模式" })).toBeVisible();
+    await expect(popup.getByRole("heading", { name: "自动清理" })).toBeVisible();
+    await expect(popup.getByRole("heading", { name: "隐私保护" })).toBeVisible();
+    await expect(popup.getByRole("heading", { name: "高级清理" })).toBeVisible();
 
     await popup.close();
   });
