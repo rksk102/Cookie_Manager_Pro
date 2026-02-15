@@ -1,4 +1,4 @@
-import { useState, memo, useMemo, useCallback } from "react";
+import { useState, memo, useMemo } from "react";
 import type { Cookie } from "~types";
 import { COOKIE_VALUE_MASK } from "~constants";
 import {
@@ -15,20 +15,13 @@ import {
 } from "~utils";
 import { CookieEditor } from "./CookieEditor";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { useConfirmDialog } from "~hooks/useConfirmDialog";
 
 interface Props {
   cookies: Cookie[];
   currentDomain?: string;
   onUpdate?: () => void;
   onMessage?: (msg: string, isError?: boolean) => void;
-}
-
-interface ConfirmState {
-  isOpen: boolean;
-  title: string;
-  message: string;
-  variant: "danger" | "warning";
-  onConfirm: () => void;
 }
 
 export const CookieList = memo(({ cookies, currentDomain, onUpdate, onMessage }: Props) => {
@@ -39,13 +32,7 @@ export const CookieList = memo(({ cookies, currentDomain, onUpdate, onMessage }:
   const [editingCookie, setEditingCookie] = useState<Cookie | null>(null);
   const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
-  const [confirmState, setConfirmState] = useState<ConfirmState>({
-    isOpen: false,
-    title: "",
-    message: "",
-    variant: "warning",
-    onConfirm: () => {},
-  });
+  const { confirmState, showConfirm, closeConfirm, handleConfirm } = useConfirmDialog();
 
   const groupedCookies = useMemo(() => {
     const grouped = new Map<string, Cookie[]>();
@@ -86,22 +73,6 @@ export const CookieList = memo(({ cookies, currentDomain, onUpdate, onMessage }:
     }
     setSelectAll(!selectAll);
   };
-
-  const showConfirm = useCallback(
-    (title: string, message: string, variant: "danger" | "warning", onConfirm: () => void) => {
-      setConfirmState({ isOpen: true, title, message, variant, onConfirm });
-    },
-    []
-  );
-
-  const closeConfirm = useCallback(() => {
-    setConfirmState((prev) => ({ ...prev, isOpen: false }));
-  }, []);
-
-  const handleConfirm = useCallback(() => {
-    confirmState.onConfirm();
-    closeConfirm();
-  }, [confirmState, closeConfirm]);
 
   const performDeleteCookie = async (cookie: Cookie) => {
     try {
@@ -160,8 +131,7 @@ export const CookieList = memo(({ cookies, currentDomain, onUpdate, onMessage }:
 
   const performDeleteSelected = async () => {
     let deleted = 0;
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i];
+    for (const cookie of cookies) {
       const key = getCookieKey(cookie.name, cookie.domain);
       if (selectedCookies.has(key)) {
         try {
@@ -199,27 +169,24 @@ export const CookieList = memo(({ cookies, currentDomain, onUpdate, onMessage }:
     showConfirm(title, message, variant, performDeleteSelected);
   };
 
-  const handleAddToWhitelist = () => {
+  const getSelectedDomains = (): Set<string> => {
     const domains = new Set<string>();
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i];
+    for (const cookie of cookies) {
       const key = getCookieKey(cookie.name, cookie.domain);
       if (selectedCookies.has(key)) {
         domains.add(normalizeDomain(cookie.domain));
       }
     }
+    return domains;
+  };
+
+  const handleAddToWhitelist = () => {
+    const domains = getSelectedDomains();
     onMessage?.(`准备添加 ${domains.size} 个域名到白名单`);
   };
 
   const handleAddToBlacklist = () => {
-    const domains = new Set<string>();
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i];
-      const key = getCookieKey(cookie.name, cookie.domain);
-      if (selectedCookies.has(key)) {
-        domains.add(normalizeDomain(cookie.domain));
-      }
-    }
+    const domains = getSelectedDomains();
     onMessage?.(`准备添加 ${domains.size} 个域名到黑名单`);
   };
 
@@ -291,7 +258,7 @@ export const CookieList = memo(({ cookies, currentDomain, onUpdate, onMessage }:
 
                 {expandedDomains.has(domain) && (
                   <div className="domain-cookies">
-                    {domainCookies.map((cookie, _index) => {
+                    {domainCookies.map((cookie) => {
                       const key = getCookieKey(cookie.name, cookie.domain);
                       const isVisible = visibleValues.has(key);
                       const displayValue = isVisible

@@ -3,47 +3,18 @@ import { CLEAR_LOG_KEY, SETTINGS_KEY, DEFAULT_SETTINGS, LOG_RETENTION_MAP } from
 import type { ClearLogEntry, Settings } from "~types";
 import { LogRetention } from "~types";
 import { getCookieTypeName, getActionText, getActionColor, formatLogTime } from "~utils";
-import { useMemo, useState, useCallback } from "react";
+import { useMemo } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { useConfirmDialog } from "~hooks/useConfirmDialog";
 
 interface Props {
   onMessage: (msg: string) => void;
 }
 
-interface ConfirmState {
-  isOpen: boolean;
-  title: string;
-  message: string;
-  variant: "danger" | "warning";
-  onConfirm: () => void;
-}
-
 export const ClearLog = ({ onMessage }: Props) => {
   const [logs, setLogs] = useStorage<ClearLogEntry[]>(CLEAR_LOG_KEY, []);
   const [settings] = useStorage<Settings>(SETTINGS_KEY, DEFAULT_SETTINGS);
-  const [confirmState, setConfirmState] = useState<ConfirmState>({
-    isOpen: false,
-    title: "",
-    message: "",
-    variant: "warning",
-    onConfirm: () => {},
-  });
-
-  const showConfirm = useCallback(
-    (title: string, message: string, variant: "danger" | "warning", onConfirm: () => void) => {
-      setConfirmState({ isOpen: true, title, message, variant, onConfirm });
-    },
-    []
-  );
-
-  const closeConfirm = useCallback(() => {
-    setConfirmState((prev) => ({ ...prev, isOpen: false }));
-  }, []);
-
-  const handleConfirm = useCallback(() => {
-    confirmState.onConfirm();
-    closeConfirm();
-  }, [confirmState, closeConfirm]);
+  const { confirmState, showConfirm, closeConfirm, handleConfirm } = useConfirmDialog();
 
   const clearAllLogs = () => {
     showConfirm("清除日志", "确定要清除所有日志记录吗？", "danger", () => {

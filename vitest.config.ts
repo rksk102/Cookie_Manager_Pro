@@ -23,6 +23,7 @@ export default defineConfig({
       "~types": path.resolve(__dirname, "types/index.ts"),
       "~constants": path.resolve(__dirname, "constants.ts"),
       "~components": path.resolve(__dirname, "components"),
+      "~hooks": path.resolve(__dirname, "hooks"),
     },
   },
 });

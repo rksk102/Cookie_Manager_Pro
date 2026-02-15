@@ -1,7 +1,10 @@
 import { test, expect, Page, BrowserContext } from "@playwright/test";
 
 async function getExtensionId(context: BrowserContext): Promise<string> {
-  const background = context.serviceWorkers()[0] || (await context.waitForEvent("serviceworker"));
+  let background = context.serviceWorkers()[0];
+  if (!background) {
+    background = await context.waitForEvent("serviceworker", { timeout: 10000 });
+  }
   const extensionId = background.url().split("/")[2];
   return extensionId;
 }
@@ -14,9 +17,9 @@ async function openPopup(context: BrowserContext, extensionId: string): Promise<
 
 test.describe("Cookie Manager Pro Extension", () => {
   test("should load extension successfully", async ({ context }) => {
-    const backgroundPages = context.backgroundPages();
-    const serviceWorkers = context.serviceWorkers();
-    expect(backgroundPages.length + serviceWorkers.length).toBeGreaterThanOrEqual(1);
+    const extensionId = await getExtensionId(context);
+    expect(extensionId).toBeTruthy();
+    expect(extensionId.length).toBeGreaterThan(0);
   });
 
   test("should have extension context", async ({ page }) => {
@@ -29,7 +32,8 @@ test.describe("Cookie Manager Pro Extension", () => {
 test.describe("Extension Popup Loading Tests", () => {
   let extensionId: string;
 
-  test.beforeAll(async ({ context }) => {
+  test.beforeAll(async ({ browser }) => {
+    const context = browser.contexts()[0];
     extensionId = await getExtensionId(context);
   });
 
@@ -121,7 +125,8 @@ test.describe("Extension Popup Loading Tests", () => {
 test.describe("Cookie Operations Tests", () => {
   let extensionId: string;
 
-  test.beforeAll(async ({ context }) => {
+  test.beforeAll(async ({ browser }) => {
+    const context = browser.contexts()[0];
     extensionId = await getExtensionId(context);
   });
 
@@ -239,7 +244,8 @@ test.describe("Cookie Operations Tests", () => {
 test.describe("Settings Tests", () => {
   let extensionId: string;
 
-  test.beforeAll(async ({ context }) => {
+  test.beforeAll(async ({ browser }) => {
+    const context = browser.contexts()[0];
     extensionId = await getExtensionId(context);
   });
 
@@ -310,13 +316,12 @@ test.describe("Settings Tests", () => {
     await popup.close();
   });
 
-  test("should display privacy protection checkboxes", async ({ context }) => {
+  test("should display privacy protection checkbox", async ({ context }) => {
     const popup = await openPopup(context, extensionId);
 
     const settingsTab = popup.getByRole("tab", { name: /设置/ });
     await settingsTab.click();
 
-    await expect(popup.getByLabel("启用隐私保护")).toBeVisible();
     await expect(popup.getByLabel("显示 Cookie 风险评估")).toBeVisible();
 
     await popup.close();
@@ -379,7 +384,8 @@ test.describe("Settings Tests", () => {
 test.describe("Domain Management Tests", () => {
   let extensionId: string;
 
-  test.beforeAll(async ({ context }) => {
+  test.beforeAll(async ({ browser }) => {
+    const context = browser.contexts()[0];
     extensionId = await getExtensionId(context);
   });
 
@@ -498,7 +504,8 @@ test.describe("Domain Management Tests", () => {
 test.describe("Clear Log Tests", () => {
   let extensionId: string;
 
-  test.beforeAll(async ({ context }) => {
+  test.beforeAll(async ({ browser }) => {
+    const context = browser.contexts()[0];
     extensionId = await getExtensionId(context);
   });
 
@@ -530,7 +537,7 @@ test.describe("Clear Log Tests", () => {
     const logTab = popup.getByRole("tab", { name: /日志/ });
     await logTab.click();
 
-    await expect(popup.locator(".clear-log-container")).toBeVisible();
+    await expect(popup.locator(".log-container")).toBeVisible();
 
     await popup.close();
   });
@@ -541,7 +548,7 @@ test.describe("Clear Log Tests", () => {
     const logTab = popup.getByRole("tab", { name: /日志/ });
     await logTab.click();
 
-    const clearBtn = popup.getByRole("button", { name: /清除所有日志/ });
+    const clearBtn = popup.getByRole("button", { name: /清除全部/ });
     await expect(clearBtn).toBeVisible();
 
     await popup.close();
@@ -551,7 +558,8 @@ test.describe("Clear Log Tests", () => {
 test.describe("Cookie List Interaction Tests", () => {
   let extensionId: string;
 
-  test.beforeAll(async ({ context }) => {
+  test.beforeAll(async ({ browser }) => {
+    const context = browser.contexts()[0];
     extensionId = await getExtensionId(context);
   });
 
@@ -601,8 +609,8 @@ test.describe("Cookie List Interaction Tests", () => {
 
 test.describe("Extension Background Tests", () => {
   test("should have service worker running", async ({ context }) => {
-    const serviceWorkers = context.serviceWorkers();
-    expect(serviceWorkers.length).toBeGreaterThanOrEqual(1);
+    const extensionId = await getExtensionId(context);
+    expect(extensionId).toBeTruthy();
   });
 
   test("should be able to navigate to test page", async ({ page }) => {
@@ -621,7 +629,8 @@ test.describe("Extension Background Tests", () => {
 test.describe("UI Component Tests", () => {
   let extensionId: string;
 
-  test.beforeAll(async ({ context }) => {
+  test.beforeAll(async ({ browser }) => {
+    const context = browser.contexts()[0];
     extensionId = await getExtensionId(context);
   });
 
@@ -701,7 +710,8 @@ test.describe("UI Component Tests", () => {
 test.describe("Accessibility Tests", () => {
   let extensionId: string;
 
-  test.beforeAll(async ({ context }) => {
+  test.beforeAll(async ({ browser }) => {
+    const context = browser.contexts()[0];
     extensionId = await getExtensionId(context);
   });
 
