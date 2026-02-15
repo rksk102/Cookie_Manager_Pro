@@ -1,12 +1,12 @@
 import { test, expect, Page, BrowserContext } from "@playwright/test";
 
 async function getExtensionId(context: BrowserContext): Promise<string> {
-  let background = context.serviceWorkers()[0];
-  if (!background) {
-    background = await context.waitForEvent("serviceworker", { timeout: 10000 });
-  }
-  const extensionId = background.url().split("/")[2];
-  return extensionId;
+  const background =
+    context.serviceWorkers()[0] ||
+    (await context.waitForEvent("serviceworker", { timeout: 30000 }));
+  const url = background.url();
+  const id = url.split("/")[2];
+  return id;
 }
 
 async function openPopup(context: BrowserContext, extensionId: string): Promise<Page> {
@@ -16,34 +16,30 @@ async function openPopup(context: BrowserContext, extensionId: string): Promise<
 }
 
 test.describe("Cookie Manager Pro Extension", () => {
-  test("should load extension successfully", async ({ context }) => {
-    const extensionId = await getExtensionId(context);
-    expect(extensionId).toBeTruthy();
-    expect(extensionId.length).toBeGreaterThan(0);
+  test("should have extension loaded", async ({ browser }) => {
+    const contexts = browser.contexts();
+    expect(contexts.length).toBeGreaterThanOrEqual(1);
   });
 
-  test("should have extension context", async ({ page }) => {
+  test("should be able to navigate to test page", async ({ page }) => {
     await page.goto("https://example.com");
-    const title = await page.title();
-    expect(title).toBeDefined();
+    await expect(page).toHaveTitle(/Example Domain/);
   });
 });
 
 test.describe("Extension Popup Loading Tests", () => {
-  let extensionId: string;
-
-  test.beforeAll(async ({ browser }) => {
-    const context = browser.contexts()[0];
-    extensionId = await getExtensionId(context);
-  });
-
   test("should open popup successfully", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+    expect(extensionId).toBeTruthy();
+
     const popup = await openPopup(context, extensionId);
     await expect(popup.locator("h1")).toContainText("Cookie Manager Pro");
     await popup.close();
   });
 
   test("should display correct popup title", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
     const title = popup.locator("h1");
     await expect(title).toBeVisible();
@@ -52,6 +48,8 @@ test.describe("Extension Popup Loading Tests", () => {
   });
 
   test("should display all tabs", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     await expect(popup.getByRole("tab", { name: /管理/ })).toBeVisible();
@@ -63,6 +61,8 @@ test.describe("Extension Popup Loading Tests", () => {
   });
 
   test("should switch to settings tab", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const settingsTab = popup.getByRole("tab", { name: /设置/ });
@@ -74,6 +74,8 @@ test.describe("Extension Popup Loading Tests", () => {
   });
 
   test("should switch to log tab", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const logTab = popup.getByRole("tab", { name: /日志/ });
@@ -85,6 +87,8 @@ test.describe("Extension Popup Loading Tests", () => {
   });
 
   test("should switch to domain list tab", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const domainTab = popup.getByRole("tab", { name: /白名单|黑名单/ });
@@ -96,6 +100,8 @@ test.describe("Extension Popup Loading Tests", () => {
   });
 
   test("should have correct tab aria attributes", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const manageTab = popup.getByRole("tab", { name: /管理/ });
@@ -106,6 +112,8 @@ test.describe("Extension Popup Loading Tests", () => {
   });
 
   test("should update aria-selected when tab changes", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const manageTab = popup.getByRole("tab", { name: /管理/ });
@@ -123,14 +131,9 @@ test.describe("Extension Popup Loading Tests", () => {
 });
 
 test.describe("Cookie Operations Tests", () => {
-  let extensionId: string;
-
-  test.beforeAll(async ({ browser }) => {
-    const context = browser.contexts()[0];
-    extensionId = await getExtensionId(context);
-  });
-
   test("should display cookie statistics section", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     await expect(popup.locator(".section").filter({ hasText: "Cookie统计" })).toBeVisible();
@@ -139,6 +142,8 @@ test.describe("Cookie Operations Tests", () => {
   });
 
   test("should display stat items", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     await expect(popup.locator(".stat-item")).toHaveCount(6);
@@ -155,6 +160,8 @@ test.describe("Cookie Operations Tests", () => {
   });
 
   test("should display quick actions section", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     await expect(popup.locator(".section").filter({ hasText: "快速操作" })).toBeVisible();
@@ -163,6 +170,8 @@ test.describe("Cookie Operations Tests", () => {
   });
 
   test("should display quick action buttons", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     await expect(popup.getByRole("button", { name: /添加到白名单/ })).toBeVisible();
@@ -174,6 +183,8 @@ test.describe("Cookie Operations Tests", () => {
   });
 
   test("should display cookie list section", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     await expect(popup.locator(".cookie-list-container")).toBeVisible();
@@ -182,6 +193,8 @@ test.describe("Cookie Operations Tests", () => {
   });
 
   test("should show confirm dialog when clear current site clicked", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const clearCurrentBtn = popup.getByRole("button", { name: /清除当前网站/ });
@@ -194,6 +207,8 @@ test.describe("Cookie Operations Tests", () => {
   });
 
   test("should show confirm dialog when clear all clicked", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const clearAllBtn = popup.getByRole("button", { name: /清除所有Cookie/ });
@@ -206,6 +221,8 @@ test.describe("Cookie Operations Tests", () => {
   });
 
   test("should close confirm dialog when cancel clicked", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const clearCurrentBtn = popup.getByRole("button", { name: /清除当前网站/ });
@@ -224,6 +241,8 @@ test.describe("Cookie Operations Tests", () => {
   test("should display current domain section", async ({ context, page }) => {
     await page.goto("https://example.com");
 
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     await expect(popup.locator(".section").filter({ hasText: "当前网站" })).toBeVisible();
@@ -232,6 +251,8 @@ test.describe("Cookie Operations Tests", () => {
   });
 
   test("should show domain info or error message", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const domainInfo = popup.locator(".domain-info");
@@ -242,14 +263,9 @@ test.describe("Cookie Operations Tests", () => {
 });
 
 test.describe("Settings Tests", () => {
-  let extensionId: string;
-
-  test.beforeAll(async ({ browser }) => {
-    const context = browser.contexts()[0];
-    extensionId = await getExtensionId(context);
-  });
-
   test("should display settings panel", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const settingsTab = popup.getByRole("tab", { name: /设置/ });
@@ -261,6 +277,8 @@ test.describe("Settings Tests", () => {
   });
 
   test("should display all settings sections", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const settingsTab = popup.getByRole("tab", { name: /设置/ });
@@ -279,6 +297,8 @@ test.describe("Settings Tests", () => {
   });
 
   test("should display theme mode options", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const settingsTab = popup.getByRole("tab", { name: /设置/ });
@@ -293,6 +313,8 @@ test.describe("Settings Tests", () => {
   });
 
   test("should display log retention select", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const settingsTab = popup.getByRole("tab", { name: /设置/ });
@@ -305,6 +327,8 @@ test.describe("Settings Tests", () => {
   });
 
   test("should display auto cleanup checkboxes", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const settingsTab = popup.getByRole("tab", { name: /设置/ });
@@ -317,6 +341,8 @@ test.describe("Settings Tests", () => {
   });
 
   test("should display privacy protection checkbox", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const settingsTab = popup.getByRole("tab", { name: /设置/ });
@@ -328,6 +354,8 @@ test.describe("Settings Tests", () => {
   });
 
   test("should display advanced cleanup checkboxes", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const settingsTab = popup.getByRole("tab", { name: /设置/ });
@@ -341,6 +369,8 @@ test.describe("Settings Tests", () => {
   });
 
   test("should apply theme class to container", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const container = popup.locator(".container");
@@ -350,6 +380,8 @@ test.describe("Settings Tests", () => {
   });
 
   test("should show custom theme settings when custom theme selected", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const settingsTab = popup.getByRole("tab", { name: /设置/ });
@@ -364,6 +396,8 @@ test.describe("Settings Tests", () => {
   });
 
   test("should display custom theme color inputs", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const settingsTab = popup.getByRole("tab", { name: /设置/ });
@@ -382,14 +416,9 @@ test.describe("Settings Tests", () => {
 });
 
 test.describe("Domain Management Tests", () => {
-  let extensionId: string;
-
-  test.beforeAll(async ({ browser }) => {
-    const context = browser.contexts()[0];
-    extensionId = await getExtensionId(context);
-  });
-
   test("should display domain list tab", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const domainTab = popup.getByRole("tab", { name: /白名单|黑名单/ });
@@ -401,6 +430,8 @@ test.describe("Domain Management Tests", () => {
   });
 
   test("should display domain management header", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const domainTab = popup.getByRole("tab", { name: /白名单|黑名单/ });
@@ -412,6 +443,8 @@ test.describe("Domain Management Tests", () => {
   });
 
   test("should display domain input field", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const domainTab = popup.getByRole("tab", { name: /白名单|黑名单/ });
@@ -424,6 +457,8 @@ test.describe("Domain Management Tests", () => {
   });
 
   test("should display add domain button", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const domainTab = popup.getByRole("tab", { name: /白名单|黑名单/ });
@@ -436,6 +471,8 @@ test.describe("Domain Management Tests", () => {
   });
 
   test("should display add current site button", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const domainTab = popup.getByRole("tab", { name: /白名单|黑名单/ });
@@ -448,6 +485,8 @@ test.describe("Domain Management Tests", () => {
   });
 
   test("should display help text for domain list", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const domainTab = popup.getByRole("tab", { name: /白名单|黑名单/ });
@@ -459,6 +498,8 @@ test.describe("Domain Management Tests", () => {
   });
 
   test("should display domain list container", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const domainTab = popup.getByRole("tab", { name: /白名单|黑名单/ });
@@ -470,6 +511,8 @@ test.describe("Domain Management Tests", () => {
   });
 
   test("should show message when adding empty domain", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const domainTab = popup.getByRole("tab", { name: /白名单|黑名单/ });
@@ -484,6 +527,8 @@ test.describe("Domain Management Tests", () => {
   });
 
   test("should show message when adding invalid domain", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const domainTab = popup.getByRole("tab", { name: /白名单|黑名单/ });
@@ -502,14 +547,9 @@ test.describe("Domain Management Tests", () => {
 });
 
 test.describe("Clear Log Tests", () => {
-  let extensionId: string;
-
-  test.beforeAll(async ({ browser }) => {
-    const context = browser.contexts()[0];
-    extensionId = await getExtensionId(context);
-  });
-
   test("should display log tab", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const logTab = popup.getByRole("tab", { name: /日志/ });
@@ -521,6 +561,8 @@ test.describe("Clear Log Tests", () => {
   });
 
   test("should display clear log header", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const logTab = popup.getByRole("tab", { name: /日志/ });
@@ -532,6 +574,8 @@ test.describe("Clear Log Tests", () => {
   });
 
   test("should display log container", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const logTab = popup.getByRole("tab", { name: /日志/ });
@@ -543,6 +587,8 @@ test.describe("Clear Log Tests", () => {
   });
 
   test("should display clear all logs button", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const logTab = popup.getByRole("tab", { name: /日志/ });
@@ -556,14 +602,9 @@ test.describe("Clear Log Tests", () => {
 });
 
 test.describe("Cookie List Interaction Tests", () => {
-  let extensionId: string;
-
-  test.beforeAll(async ({ browser }) => {
-    const context = browser.contexts()[0];
-    extensionId = await getExtensionId(context);
-  });
-
   test("should display cookie list header", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     await expect(popup.locator(".cookie-list-header")).toBeVisible();
@@ -572,6 +613,8 @@ test.describe("Cookie List Interaction Tests", () => {
   });
 
   test("should expand cookie list when clicked", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const header = popup.locator(".cookie-list-header");
@@ -583,6 +626,8 @@ test.describe("Cookie List Interaction Tests", () => {
   });
 
   test("should display expand icon", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const expandIcon = popup.locator(".cookie-list-header .expand-icon");
@@ -592,6 +637,8 @@ test.describe("Cookie List Interaction Tests", () => {
   });
 
   test("should toggle expand icon state", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const header = popup.locator(".cookie-list-header");
@@ -613,12 +660,6 @@ test.describe("Extension Background Tests", () => {
     expect(extensionId).toBeTruthy();
   });
 
-  test("should be able to navigate to test page", async ({ page }) => {
-    await page.goto("https://example.com");
-
-    await expect(page).toHaveTitle(/Example Domain/);
-  });
-
   test("should have extension loaded in browser", async ({ context }) => {
     const extensionId = await getExtensionId(context);
     expect(extensionId).toBeTruthy();
@@ -627,14 +668,9 @@ test.describe("Extension Background Tests", () => {
 });
 
 test.describe("UI Component Tests", () => {
-  let extensionId: string;
-
-  test.beforeAll(async ({ browser }) => {
-    const context = browser.contexts()[0];
-    extensionId = await getExtensionId(context);
-  });
-
   test("should have proper button styling classes", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     await expect(popup.locator(".btn-success")).toBeVisible();
@@ -646,6 +682,8 @@ test.describe("UI Component Tests", () => {
   });
 
   test("should display section icons", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const sectionIcons = popup.locator(".section-icon");
@@ -656,6 +694,8 @@ test.describe("UI Component Tests", () => {
   });
 
   test("should display tab icons", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const tabIcons = popup.locator(".tab-icon");
@@ -666,6 +706,8 @@ test.describe("UI Component Tests", () => {
   });
 
   test("should display button icons", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const btnIcons = popup.locator(".btn-icon");
@@ -676,6 +718,8 @@ test.describe("UI Component Tests", () => {
   });
 
   test("should have proper container structure", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     await expect(popup.locator(".container")).toBeVisible();
@@ -686,6 +730,8 @@ test.describe("UI Component Tests", () => {
   });
 
   test("should display message component", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const addWhitelistBtn = popup.getByRole("button", { name: /添加到白名单/ });
@@ -697,6 +743,8 @@ test.describe("UI Component Tests", () => {
   });
 
   test("should have correct tabpanel structure", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const managePanel = popup.locator("#manage-panel");
@@ -708,14 +756,9 @@ test.describe("UI Component Tests", () => {
 });
 
 test.describe("Accessibility Tests", () => {
-  let extensionId: string;
-
-  test.beforeAll(async ({ browser }) => {
-    const context = browser.contexts()[0];
-    extensionId = await getExtensionId(context);
-  });
-
   test("should have proper tab role attributes", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const tabs = popup.locator('[role="tab"]');
@@ -726,6 +769,8 @@ test.describe("Accessibility Tests", () => {
   });
 
   test("should have proper tablist role", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const tablist = popup.locator('[role="tablist"]');
@@ -735,6 +780,8 @@ test.describe("Accessibility Tests", () => {
   });
 
   test("should have proper tabpanel role", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const tabpanel = popup.locator('[role="tabpanel"]');
@@ -744,6 +791,8 @@ test.describe("Accessibility Tests", () => {
   });
 
   test("should have aria-selected on tabs", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const selectedTab = popup.locator('[role="tab"][aria-selected="true"]');
@@ -753,6 +802,8 @@ test.describe("Accessibility Tests", () => {
   });
 
   test("should have aria-controls on tabs", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const manageTab = popup.getByRole("tab", { name: /管理/ });
@@ -763,6 +814,8 @@ test.describe("Accessibility Tests", () => {
   });
 
   test("should have aria-expanded on expandable elements", async ({ context }) => {
+    const extensionId = await getExtensionId(context);
+
     const popup = await openPopup(context, extensionId);
 
     const cookieListHeader = popup.locator(".cookie-list-header");

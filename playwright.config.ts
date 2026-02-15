@@ -1,4 +1,4 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig } from "@playwright/test";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -23,7 +23,6 @@ export default defineConfig({
     {
       name: "chromium",
       use: {
-        ...devices["Desktop Chrome"],
         launchOptions: {
           args: [
             `--disable-extensions-except=${extensionPath}`,
