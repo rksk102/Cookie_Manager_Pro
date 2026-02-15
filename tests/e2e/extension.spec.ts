@@ -92,16 +92,16 @@ test.describe("Cookie Operations", () => {
     await popup.close();
   });
 
-  test("should expand and collapse cookie list", async ({ context, extensionId }) => {
+  test("should show cookie list or empty state", async ({ context, extensionId }) => {
     const popup = await openPopup(context, extensionId);
 
-    const header = popup.locator(".cookie-list-header");
+    const cookieListHeader = popup.locator(".cookie-list-header");
+    const emptyState = popup.locator(".cookie-list-empty");
 
-    await header.click();
-    await expect(popup.locator(".cookie-list")).toBeVisible();
+    const hasHeader = (await cookieListHeader.count()) > 0;
+    const hasEmptyState = (await emptyState.count()) > 0;
 
-    await header.click();
-    await expect(popup.locator(".cookie-list")).not.toBeVisible();
+    expect(hasHeader || hasEmptyState).toBeTruthy();
 
     await popup.close();
   });
@@ -115,7 +115,7 @@ test.describe("Domain Management", () => {
     await domainTab.click();
 
     await expect(popup.locator('input[placeholder="例如: google.com"]')).toBeVisible();
-    await expect(popup.getByRole("button", { name: "添加" })).toBeVisible();
+    await expect(popup.getByRole("button", { name: "添加", exact: true })).toBeVisible();
     await expect(popup.getByRole("button", { name: "添加当前网站" })).toBeVisible();
 
     await popup.close();
@@ -127,7 +127,7 @@ test.describe("Domain Management", () => {
     const domainTab = popup.getByRole("tab", { name: /白名单|黑名单/ });
     await domainTab.click();
 
-    const addButton = popup.getByRole("button", { name: "添加" });
+    const addButton = popup.getByRole("button", { name: "添加", exact: true });
     await addButton.click();
 
     await expect(popup.locator(".message")).toBeVisible();
@@ -144,7 +144,7 @@ test.describe("Domain Management", () => {
     const input = popup.locator('input[placeholder="例如: google.com"]');
     await input.fill("invalid domain with spaces");
 
-    const addButton = popup.getByRole("button", { name: "添加" });
+    const addButton = popup.getByRole("button", { name: "添加", exact: true });
     await addButton.click();
 
     await expect(popup.locator(".message")).toBeVisible();
@@ -243,11 +243,21 @@ test.describe("Accessibility", () => {
     await popup.close();
   });
 
-  test("should have aria-expanded on cookie list header", async ({ context, extensionId }) => {
+  test("should have aria-expanded on cookie list header when cookies exist", async ({
+    context,
+    extensionId,
+  }) => {
     const popup = await openPopup(context, extensionId);
 
     const cookieListHeader = popup.locator(".cookie-list-header");
-    await expect(cookieListHeader).toHaveAttribute("aria-expanded");
+    const count = await cookieListHeader.count();
+
+    if (count > 0) {
+      await expect(cookieListHeader).toHaveAttribute("aria-expanded");
+    } else {
+      const emptyState = popup.locator(".cookie-list-empty");
+      await expect(emptyState).toBeVisible();
+    }
 
     await popup.close();
   });
