@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
 import { useState, ReactNode } from "react";
 import { CookieList } from "../../components/CookieList";
 
@@ -110,9 +111,10 @@ vi.mock("../../components/ConfirmDialogWrapper", () => ({
         _message: string,
         _variant: string,
         onConfirm: () => void
-      ) => {
+      ): ReactNode => {
         setConfirmCallback(() => onConfirm);
         setIsOpen(true);
+        return null;
       };
 
       return (
